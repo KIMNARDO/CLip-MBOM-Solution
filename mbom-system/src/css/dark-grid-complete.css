@@ -1,0 +1,361 @@
+/* ============================================
+   Complete Dark Mode Grid Styling
+   Fixes all white backgrounds and improves dark mode visibility
+   ============================================ */
+
+/* ====== Base Table Dark Mode ====== */
+.bom-table {
+    background-color: var(--vscode-editor-background, #1e1e1e) !important;
+    color: var(--vscode-foreground, #d4d4d4) !important;
+}
+
+.bom-table thead {
+    background-color: var(--vscode-panel-background, #252526) !important;
+}
+
+.bom-table thead th {
+    background-color: var(--vscode-panel-background, #252526) !important;
+    color: var(--vscode-foreground, #d4d4d4) !important;
+    border-color: var(--vscode-panel-border, #3e3e42) !important;
+}
+
+/* ====== Data Grid Rows - Dark Mode ====== */
+.bom-table tbody tr {
+    background-color: var(--vscode-editor-background, #1e1e1e) !important;
+}
+
+.bom-table tbody tr:nth-child(even) {
+    background-color: #252526 !important;
+}
+
+.bom-table tbody tr:nth-child(odd) {
+    background-color: #1e1e1e !important;
+}
+
+.bom-table tbody td {
+    background-color: transparent !important;
+    color: var(--vscode-foreground, #d4d4d4) !important;
+    border-color: #2a2a2e !important;
+}
+
+/* Remove all white backgrounds from cells */
+.bom-table tbody td:not([class*="level-"]) {
+    background-color: transparent !important;
+}
+
+/* ====== Filter Section Dark Mode ====== */
+.filter-section,
+.filter-container,
+.filter-panel,
+.filter-controls {
+    background-color: var(--vscode-panel-background, #252526) !important;
+    color: var(--vscode-foreground, #d4d4d4) !important;
+}
+
+.filter-input,
+.filter-select,
+input[type="text"],
+input[type="search"],
+select,
+.form-control,
+.form-select {
+    background-color: var(--vscode-input-background, #3c3c3c) !important;
+    color: var(--vscode-input-foreground, #cccccc) !important;
+    border-color: var(--vscode-input-border, #3c3c3c) !important;
+}
+
+.filter-input:focus,
+.filter-select:focus,
+input[type="text"]:focus,
+input[type="search"]:focus,
+select:focus,
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--vscode-input-background, #3c3c3c) !important;
+    border-color: var(--vscode-focusBorder, #007acc) !important;
+    outline: none !important;
+}
+
+/* ====== Control Panel & Toolbar Dark Mode ====== */
+.control-panel,
+.toolbar,
+.action-bar,
+.button-group {
+    background-color: var(--vscode-panel-background, #252526) !important;
+}
+
+/* ====== Grid Container Background ====== */
+.grid-wrapper,
+.grid-container,
+.table-wrapper,
+.table-container {
+    background-color: var(--vscode-editor-background, #1e1e1e) !important;
+}
+
+/* ====== Remove White Backgrounds from Specific Elements ====== */
+.level-3-cell,
+.level-4-cell,
+.highlight-cell,
+.selected-cell {
+    background-color: transparent !important;
+}
+
+/* Level 3 & 4 cells - Dark mode appropriate colors */
+.level-3-bg {
+    background-color: #2a1e3a !important; /* Dark purple instead of light orange */
+}
+
+.level-4-bg {
+    background-color: #3a2a1e !important; /* Dark orange instead of light pink */
+}
+
+/* ====== Highlighted Cells Dark Mode ====== */
+.highlight-row,
+.highlight-cell,
+.selected-row {
+    background-color: rgba(0, 122, 204, 0.2) !important;
+}
+
+.highlight-yellow {
+    background-color: rgba(255, 235, 59, 0.1) !important;
+    color: #ffd600 !important;
+}
+
+/* ====== Row Hover Effects ====== */
+.bom-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.bom-table tbody tr.selected {
+    background-color: rgba(0, 122, 204, 0.3) !important;
+}
+
+/* ====== Column Resize Handles ====== */
+.column-resize-handle {
+    background: transparent !important;
+}
+
+.column-resize-handle:hover {
+    background: var(--vscode-button-background, #007acc) !important;
+}
+
+/* ====== Dropdown & Context Menus ====== */
+.dropdown-menu,
+.context-menu {
+    background-color: var(--vscode-dropdown-background, #3c3c3c) !important;
+    border-color: var(--vscode-dropdown-border, #3c3c3c) !important;
+}
+
+.dropdown-item,
+.context-menu-item {
+    color: var(--vscode-dropdown-foreground, #cccccc) !important;
+}
+
+.dropdown-item:hover,
+.context-menu-item:hover {
+    background-color: var(--vscode-list-hoverBackground, #2a2d2e) !important;
+}
+
+/* ====== Modal Backgrounds ====== */
+.modal-content {
+    background-color: var(--vscode-editor-background, #1e1e1e) !important;
+    color: var(--vscode-foreground, #d4d4d4) !important;
+}
+
+.modal-header,
+.modal-footer {
+    background-color: var(--vscode-panel-background, #252526) !important;
+    border-color: var(--vscode-panel-border, #3e3e42) !important;
+}
+
+.modal-body {
+    background-color: var(--vscode-editor-background, #1e1e1e) !important;
+}
+
+/* ====== Status Indicators with Dark Mode Colors ====== */
+.status-active {
+    background-color: rgba(78, 201, 176, 0.2) !important;
+    color: #4ec9b0 !important;
+}
+
+.status-inactive {
+    background-color: rgba(244, 135, 113, 0.2) !important;
+    color: #f48771 !important;
+}
+
+.status-pending {
+    background-color: rgba(220, 220, 170, 0.2) !important;
+    color: #dcdcaa !important;
+}
+
+/* ====== Scrollbar Dark Mode ====== */
+::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--vscode-scrollbarSlider-background, #424242);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-hoverBackground, #4e4e4e);
+    border-radius: 7px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-activeBackground, #5a5a5a);
+}
+
+/* ====== Button Dark Mode Fixes ====== */
+.btn-primary {
+    background-color: var(--vscode-button-background, #007acc) !important;
+    color: var(--vscode-button-foreground, #ffffff) !important;
+    border-color: var(--vscode-button-background, #007acc) !important;
+}
+
+.btn-secondary {
+    background-color: var(--vscode-button-secondaryBackground, #3c3c3c) !important;
+    color: var(--vscode-button-secondaryForeground, #cccccc) !important;
+    border-color: var(--vscode-button-secondaryBackground, #3c3c3c) !important;
+}
+
+/* ====== Remove Any Remaining White Backgrounds ====== */
+* {
+    scrollbar-color: #4e4e4e #1e1e1e;
+}
+
+/* Force dark mode on all table cells that don't have level classes */
+.bom-table tbody td:not([class*="level-"]):not([class*="status-"]) {
+    background-color: transparent !important;
+    color: var(--vscode-foreground, #d4d4d4) !important;
+}
+
+/* ====== Grid Lines Dark Mode ====== */
+.bom-table,
+.bom-table th,
+.bom-table td {
+    border-color: #3e3e42 !important;
+}
+
+/* ====== Checkbox Dark Mode ====== */
+input[type="checkbox"] {
+    background-color: var(--vscode-checkbox-background, #3c3c3c) !important;
+    border-color: var(--vscode-checkbox-border, #3c3c3c) !important;
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--vscode-button-background, #007acc) !important;
+    border-color: var(--vscode-button-background, #007acc) !important;
+}
+
+/* ====== Loading Spinner Dark Mode ====== */
+.spinner,
+.loader {
+    border-color: var(--vscode-progressBar-background, #0e639c) !important;
+    border-top-color: transparent !important;
+}
+
+/* ====== Tooltip Dark Mode ====== */
+.tooltip {
+    background-color: var(--vscode-editorWidget-background, #252526) !important;
+    color: var(--vscode-editorWidget-foreground, #cccccc) !important;
+    border-color: var(--vscode-editorWidget-border, #454545) !important;
+}
+
+/* ====== Numeric Input Fields - White Text Color ====== */
+input[type="number"],
+input[type="tel"],
+.numeric-input,
+.quantity-input,
+.weight-input,
+td.text-right input,
+td[class*="numeric"] input,
+.bom-table tbody td input[type="number"],
+.bom-table tbody td input[type="tel"],
+.ag-cell-edit-input[type="number"],
+.ag-cell-edit-input[type="tel"] {
+    color: #ffffff !important;
+    background-color: var(--vscode-input-background, #3c3c3c) !important;
+}
+
+/* Numeric cells in edit mode */
+.ag-cell-inline-editing input[type="number"],
+.ag-cell-inline-editing input[type="tel"],
+.ag-cell-focus input[type="number"],
+.ag-cell-focus input[type="tel"] {
+    color: #ffffff !important;
+}
+
+/* ContentEditable fields - especially numeric ones */
+.editable-field,
+.editable-number,
+.editable-currency,
+[contenteditable="true"],
+span[contenteditable="true"],
+td [contenteditable="true"] {
+    color: #ffffff !important;
+}
+
+/* Editable fields when focused/editing */
+.editable-field:focus,
+.editable-number:focus,
+.editable-currency:focus,
+[contenteditable="true"]:focus,
+.editing {
+    color: #ffffff !important;
+    background-color: rgba(60, 60, 60, 0.8) !important;
+    outline: 1px solid #007acc !important;
+}
+
+/* All table cells with editable content */
+.bom-table tbody td .editable-field,
+.bom-table tbody td .editable-number,
+.bom-table tbody td .editable-currency,
+.bom-table tbody td span[contenteditable="true"] {
+    color: #ffffff !important;
+}
+
+/* Ensure visibility during editing */
+.bom-table tbody td .editable-field.editing,
+.bom-table tbody td .editable-number.editing,
+.bom-table tbody td .editable-currency.editing {
+    color: #ffffff !important;
+    background-color: #2a2a2e !important;
+}
+
+/* ====== AG-Grid Specific Styles ====== */
+.ag-theme-alpine-dark .ag-cell-edit-input,
+.ag-theme-alpine .ag-cell-edit-input,
+.ag-cell-edit-input {
+    color: #ffffff !important;
+    background-color: #3c3c3c !important;
+}
+
+/* AG-Grid cells */
+.ag-cell,
+.ag-cell-value {
+    color: #ffffff !important;
+}
+
+/* AG-Grid numeric columns */
+.ag-cell.ag-cell-value[col-id*="quantity"],
+.ag-cell.ag-cell-value[col-id*="weight"],
+.ag-cell.ag-cell-value[col-id*="cost"],
+.ag-cell.ag-cell-value[col-id*="price"],
+.ag-cell.ag-cell-value[col-id*="amount"] {
+    color: #ffffff !important;
+}
+
+/* ====== Print Mode Override ====== */
+@media print {
+    .bom-table,
+    .bom-table thead,
+    .bom-table tbody,
+    .bom-table th,
+    .bom-table td {
+        background-color: white !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+}

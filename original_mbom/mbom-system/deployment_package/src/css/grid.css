@@ -1,0 +1,289 @@
+/* ag-Grid 커스터마이징 */
+.ag-theme-alpine {
+    --ag-border-color: var(--border-color);
+    --ag-header-background-color: #f8f9fa;
+    --ag-header-foreground-color: #495057;
+    --ag-row-hover-color: #e3f2fd;
+    --ag-line-height: 3px; /* 트리 라인 굵기 */
+    --ag-tree-indent-size: 20px;
+}
+
+/* 트리 구조 라인 스타일 - 굵고 흰색 라인 */
+.ag-theme-alpine .ag-cell-wrapper.ag-row-group {
+    position: relative;
+}
+
+.ag-theme-alpine .ag-cell-wrapper.ag-row-group::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: white;
+    box-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.ag-theme-alpine .ag-group-child-count {
+    background-color: transparent !important;
+}
+
+.ag-theme-alpine .ag-group-expanded::before,
+.ag-theme-alpine .ag-group-contracted::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    width: 15px;
+    height: 3px;
+    background-color: white;
+    transform: translateY(-50%);
+    box-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* 트리 연결선 */
+.ag-theme-alpine .ag-row-group-indent-1::before,
+.ag-theme-alpine .ag-row-group-indent-2::before,
+.ag-theme-alpine .ag-row-group-indent-3::before,
+.ag-theme-alpine .ag-row-group-indent-4::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--ag-tree-indent-size) * var(--level, 1));
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: white;
+}
+
+/* 트리 셀 커스텀 스타일 */
+.tree-cell {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    position: relative;
+}
+
+.tree-cell::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: white;
+}
+
+.tree-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    color: white;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tree-icon.leaf {
+    background-color: transparent;
+}
+
+.tree-icon i {
+    font-size: 12px;
+}
+
+.tree-value {
+    font-weight: 500;
+}
+
+/* Level 별 셀 스타일 */
+.level-cell {
+    position: relative;
+}
+
+.level-0-cell {
+    background-color: #f0f4ff !important; /* 연한 파란색 */
+    font-weight: 600;
+}
+
+.level-1-cell {
+    background-color: #f5f0ff !important; /* 연한 보라색 */
+}
+
+.level-2-cell {
+    background-color: #f0fff4 !important; /* 연한 초록색 */
+}
+
+.level-3-cell {
+    background-color: #fff9f0 !important; /* 연한 주황색 */
+}
+
+.level-4-cell {
+    background-color: #fff0f5 !important; /* 연한 분홍색 */
+}
+
+/* 스펙 셀 스타일 */
+.spec-cell {
+    background-color: #f0f8ff;
+    text-align: center;
+}
+
+/* 레벨별 행 전체 색상 */
+.ag-row-level-0 {
+    background-color: #f0f4ff !important; /* Level 0 - 연한 파란색 */
+}
+
+.ag-row-level-1 {
+    background-color: #f5f0ff !important; /* Level 1 - 연한 보라색 */
+}
+
+.ag-row-level-2 {
+    background-color: #f0fff4 !important; /* Level 2 - 연한 초록색 */
+}
+
+.ag-row-level-3 {
+    background-color: #fff9f0 !important; /* Level 3 - 연한 주황색 */
+}
+
+.ag-row-level-4 {
+    background-color: #fff0f5 !important; /* Level 4 - 연한 분홍색 */
+}
+
+/* 하이라이트 색상 - 레벨 색상보다 우선순위 */
+.highlight-search {
+    background-color: #cce5ff !important;
+}
+
+.highlight-deployed {
+    background-color: #e0e0e0 !important;
+}
+
+.highlight-modified {
+    background-color: #ffffcc !important;
+}
+
+.highlight-deleted {
+    background-color: #ffcccc !important;
+}
+
+.highlight-required-missing {
+    background-color: #ffccdd !important;
+}
+
+.highlight-eono-match {
+    background-color: #ccffcc !important;
+}
+
+.highlight-existing-part {
+    background-color: #ffd4a3 !important;
+}
+
+/* 트리 데이터 스타일 */
+.ag-group-expanded,
+.ag-group-contracted {
+    cursor: pointer;
+}
+
+.ag-group-value {
+    font-weight: 500;
+}
+
+/* 헤더 그룹 스타일 */
+.ag-header-group-cell {
+    font-weight: 600;
+}
+
+/* 편집 모드 스타일 */
+.ag-cell-editing {
+    background-color: #fff3cd !important;
+    border: 1px solid #ffc107 !important;
+}
+
+/* 선택된 행 스타일 */
+.ag-row-selected {
+    background-color: #e3f2fd !important;
+}
+
+/* 이미지 셀 스타일 */
+.image-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.image-cell img {
+    max-width: 30px;
+    max-height: 30px;
+    cursor: pointer;
+}
+
+/* 파일 아이콘 스타일 */
+.file-icon {
+    color: #28a745;
+    font-size: 14px;
+}
+
+.file-icon.missing {
+    color: #ccc;
+}
+
+/* 상태 배지 스타일 */
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-badge.new {
+    background-color: #007bff;
+    color: white;
+}
+
+.status-badge.modified {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.status-badge.deleted {
+    background-color: #dc3545;
+    color: white;
+}
+
+.status-badge.approved {
+    background-color: #28a745;
+    color: white;
+}
+
+/* 드래그 앤 드롭 스타일 */
+.ag-row-drag {
+    cursor: move;
+}
+
+.ag-row-dragging {
+    opacity: 0.5;
+}
+
+/* 툴팁 스타일 */
+.ag-tooltip {
+    background-color: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* 필터 메뉴 스타일 */
+.ag-filter-toolpanel {
+    font-size: 13px;
+}
+
+/* 상태바 스타일 */
+.ag-status-bar {
+    font-size: 12px;
+    background-color: #f8f9fa;
+}

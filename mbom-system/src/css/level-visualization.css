@@ -1,0 +1,419 @@
+/* Enhanced Level Visualization System */
+
+/* ============================================
+   Level Display Components
+   ============================================ */
+
+/* Level Badge System */
+.level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.level-badge-0 {
+    background: linear-gradient(135deg, var(--level-0), rgba(79, 195, 247, 0.3));
+    color: white;
+    border: 1px solid var(--level-0);
+}
+
+.level-badge-1 {
+    background: linear-gradient(135deg, var(--level-1), rgba(102, 187, 106, 0.3));
+    color: white;
+    border: 1px solid var(--level-1);
+}
+
+.level-badge-2 {
+    background: linear-gradient(135deg, var(--level-2), rgba(255, 167, 38, 0.3));
+    color: white;
+    border: 1px solid var(--level-2);
+}
+
+.level-badge-3 {
+    background: linear-gradient(135deg, var(--level-3), rgba(171, 71, 188, 0.3));
+    color: white;
+    border: 1px solid var(--level-3);
+}
+
+.level-badge-4 {
+    background: linear-gradient(135deg, var(--level-4), rgba(239, 83, 80, 0.3));
+    color: white;
+    border: 1px solid var(--level-4);
+}
+
+.level-badge-5 {
+    background: linear-gradient(135deg, var(--level-5), rgba(255, 235, 59, 0.3));
+    color: #333;
+    border: 1px solid var(--level-5);
+}
+
+.level-badge-6 {
+    background: linear-gradient(135deg, var(--level-6), rgba(38, 198, 218, 0.3));
+    color: white;
+    border: 1px solid var(--level-6);
+}
+
+/* Level Icons */
+.level-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    text-align: center;
+    line-height: 16px;
+    font-size: 12px;
+}
+
+/* Level Type Labels */
+.level-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+/* Tree-style Level Indicators */
+.level-tree-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 8px;
+}
+
+.level-tree-line {
+    display: inline-block;
+    width: 20px;
+    height: 1px;
+    background: var(--vscode-border);
+    position: relative;
+}
+
+.level-tree-line::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -6px;
+    width: 1px;
+    height: 13px;
+    background: var(--vscode-border);
+}
+
+.level-tree-node {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--vscode-accent);
+    border: 1px solid var(--vscode-border);
+}
+
+/* Level Hierarchy Visual */
+.level-hierarchy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.level-depth-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.level-depth-bar {
+    width: 3px;
+    height: 14px;
+    background: var(--vscode-border);
+    opacity: 0.5;
+    border-radius: 1px;
+}
+
+.level-depth-bar.active {
+    background: var(--vscode-accent);
+    opacity: 1;
+}
+
+/* Visual Level Tags - DEPRECATED (Hidden) */
+.level-tag {
+    display: none !important; /* Hide level tags - using VS Code style instead */
+}
+
+/* Indentation Visualization */
+.level-indent-visual {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    padding-left: calc(var(--level) * 24px);
+}
+
+.level-indent-lines {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+.level-indent-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--vscode-border);
+    opacity: 0.3;
+}
+
+.level-indent-line:nth-child(1) { left: 12px; }
+.level-indent-line:nth-child(2) { left: 36px; }
+.level-indent-line:nth-child(3) { left: 60px; }
+.level-indent-line:nth-child(4) { left: 84px; }
+.level-indent-line:nth-child(5) { left: 108px; }
+.level-indent-line:nth-child(6) { left: 132px; }
+
+/* Level Description Tooltips */
+.level-tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.level-tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 4px;
+}
+
+/* Assembly Level Icons */
+.level-assembly-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    font-size: 12px;
+    background: var(--vscode-sidebar);
+    border: 1px solid var(--vscode-border);
+}
+
+.level-0 .level-assembly-icon { 
+    background: rgba(79, 195, 247, 0.2);
+    border-color: var(--level-0);
+}
+
+.level-1 .level-assembly-icon { 
+    background: rgba(102, 187, 106, 0.2);
+    border-color: var(--level-1);
+}
+
+.level-2 .level-assembly-icon { 
+    background: rgba(255, 167, 38, 0.2);
+    border-color: var(--level-2);
+}
+
+.level-3 .level-assembly-icon { 
+    background: rgba(171, 71, 188, 0.2);
+    border-color: var(--level-3);
+}
+
+/* Level Type Descriptors */
+.level-descriptor {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--vscode-sidebar);
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.level-descriptor-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.level-0 .level-descriptor-icon {
+    background: var(--level-0);
+    color: white;
+}
+
+.level-1 .level-descriptor-icon {
+    background: var(--level-1);
+    color: white;
+}
+
+.level-2 .level-descriptor-icon {
+    background: var(--level-2);
+    color: white;
+}
+
+.level-3 .level-descriptor-icon {
+    background: var(--level-3);
+    color: white;
+}
+
+.level-descriptor-text {
+    font-weight: 500;
+}
+
+/* Progress-style Level Indicator */
+.level-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px;
+    background: var(--vscode-sidebar);
+    border-radius: 4px;
+}
+
+.level-progress-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--vscode-border);
+    transition: all 0.2s;
+}
+
+.level-progress-dot.active {
+    width: 8px;
+    height: 8px;
+    background: var(--vscode-accent);
+}
+
+.level-0 .level-progress-dot:nth-child(1) { background: var(--level-0); }
+.level-1 .level-progress-dot:nth-child(1),
+.level-1 .level-progress-dot:nth-child(2) { background: var(--level-1); }
+.level-2 .level-progress-dot:nth-child(1),
+.level-2 .level-progress-dot:nth-child(2),
+.level-2 .level-progress-dot:nth-child(3) { background: var(--level-2); }
+
+/* Animated Level Indicator */
+@keyframes levelPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.level-indicator-animated {
+    animation: levelPulse 2s infinite;
+}
+
+/* VS Code Style Grid Elements */
+.expand-icon-grid {
+    color: #cccccc;
+    font-size: 11px;
+    user-select: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.expand-icon-grid:hover {
+    color: #ffffff;
+}
+
+.part-hierarchy {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.part-number-text {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+}
+
+/* Compact Level Display for Tables */
+.level-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 30px;
+}
+
+.level-compact-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+}
+
+.level-compact-badge-0 { background: var(--level-0); }
+.level-compact-badge-1 { background: var(--level-1); }
+.level-compact-badge-2 { background: var(--level-2); }
+.level-compact-badge-3 { background: var(--level-3); }
+.level-compact-badge-4 { background: var(--level-4); }
+.level-compact-badge-5 { background: var(--level-5); color: #333; }
+.level-compact-badge-6 { background: var(--level-6); }
+
+.level-compact-text {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--vscode-text-secondary);
+    font-weight: 500;
+}
+
+/* Hierarchical Tree Lines */
+.level-tree-visualization {
+    display: inline-block;
+    position: relative;
+    margin-left: 4px;
+}
+
+.level-tree-branch {
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    width: 12px;
+    height: 1px;
+    background: var(--vscode-border);
+}
+
+.level-tree-trunk {
+    position: absolute;
+    left: -12px;
+    top: -50%;
+    width: 1px;
+    height: 100%;
+    background: var(--vscode-border);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .level-tag-label {
+        display: none;
+    }
+    
+    .level-badge {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+    
+    .level-descriptor {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+}

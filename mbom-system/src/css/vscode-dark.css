@@ -1,0 +1,475 @@
+/* VS Code Dark Theme for M-BOM System */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #1e1e1e;
+  color: #cccccc;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* VS Code Title Bar */
+.vscode-titlebar {
+  height: 30px;
+  background: #3c3c3c;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  border-bottom: 1px solid #2d2d30;
+}
+
+.vscode-title {
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.window-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.control-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.control-btn.close { background: #ff5f56; }
+.control-btn.minimize { background: #ffbd2e; }
+.control-btn.maximize { background: #27ca3f; }
+
+/* VS Code Menu Bar */
+.vscode-menubar {
+  height: 35px;
+  background: #2d2d30;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.menu-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.2s;
+  color: #cccccc;
+}
+
+.menu-item:hover {
+  background: #37373d;
+}
+
+.menu-item.active {
+  background: #094771;
+  color: #ffffff;
+}
+
+/* VS Code Main Layout */
+.vscode-layout {
+  display: flex;
+  height: calc(100vh - 65px);
+  background: #1e1e1e;
+}
+
+/* VS Code Sidebar */
+.vscode-sidebar {
+  width: 320px;
+  background: #252526;
+  border-right: 1px solid #3e3e42;
+  display: flex;
+  flex-direction: column;
+}
+
+.vscode-sidebar-header {
+  padding: 15px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #cccccc;
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.level-indicator {
+  background: #094771;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+/* Tree View */
+.tree-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+  background: #252526;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 15px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+  position: relative;
+  color: #cccccc;
+}
+
+.tree-item:hover {
+  background: #2a2d2e;
+}
+
+.tree-item.selected {
+  background: #094771;
+  color: #ffffff;
+}
+
+.tree-item-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.tree-expand {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #808080;
+}
+
+.tree-icon {
+  margin-right: 6px;
+  width: 16px;
+  text-align: center;
+}
+
+.tree-label {
+  flex: 1;
+}
+
+.tree-badge {
+  margin-left: 8px;
+  padding: 1px 4px;
+  background: #007acc;
+  color: white;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* Main Content Area */
+.vscode-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+/* VS Code Tabs */
+.vscode-tabs {
+  height: 35px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.tab-item {
+  padding: 6px 12px;
+  background: transparent;
+  color: #969696;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+  margin-right: 1px;
+}
+
+.tab-item:hover {
+  color: #cccccc;
+}
+
+.tab-item.active {
+  background: #1e1e1e;
+  color: #ffffff;
+  border-top: 1px solid #007acc;
+}
+
+/* Main Table Area */
+.table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+  background: #1e1e1e;
+}
+
+/* VS Code Table Styling */
+.mbom-table {
+  width: 100%;
+  background: #252526;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.mbom-table thead {
+  background: #2d2d30;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.mbom-table th {
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid #3e3e42;
+  font-weight: 600;
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.mbom-table td {
+  padding: 6px 12px;
+  border: 1px solid #3e3e42;
+  background: #1e1e1e;
+}
+
+.mbom-table tr:hover td {
+  background: #2a2d2e;
+}
+
+.mbom-table tr.selected td {
+  background: #094771;
+  color: #ffffff;
+}
+
+/* Status Bar */
+.vscode-statusbar {
+  height: 22px;
+  background: #007acc;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  font-size: 12px;
+  color: white;
+  justify-content: space-between;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  height: 100%;
+}
+
+.status-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Right Panel */
+.vscode-panel {
+  width: 350px;
+  background: #252526;
+  border-left: 1px solid #3e3e42;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: 12px 15px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+.property-group {
+  margin-bottom: 20px;
+}
+
+.property-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #969696;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.property-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.property-label {
+  color: #969696;
+}
+
+.property-value {
+  color: #cccccc;
+  font-weight: 500;
+}
+
+/* AG-Grid Dark Theme Override */
+.ag-theme-alpine-dark {
+  --ag-background-color: #1e1e1e;
+  --ag-header-background-color: #2d2d30;
+  --ag-header-foreground-color: #cccccc;
+  --ag-border-color: #3e3e42;
+  --ag-row-hover-color: #2a2d2e;
+  --ag-selected-row-background-color: #094771;
+  --ag-font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --ag-font-size: 13px;
+}
+
+.ag-theme-alpine-dark .ag-root-wrapper {
+  border: none;
+}
+
+.ag-theme-alpine-dark .ag-header-cell {
+  background: #2d2d30;
+  color: #cccccc;
+  border-right: 1px solid #3e3e42;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ag-theme-alpine-dark .ag-cell {
+  background: #1e1e1e;
+  color: #cccccc;
+  border-right: 1px solid #3e3e42;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.ag-theme-alpine-dark .ag-row-hover .ag-cell {
+  background: #2a2d2e !important;
+}
+
+.ag-theme-alpine-dark .ag-row-selected .ag-cell {
+  background: #094771 !important;
+  color: #ffffff !important;
+}
+
+/* Notification Banner */
+.notification-banner {
+  height: 40px;
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+  color: white;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notification-banner.show {
+  display: flex;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* Changes Dashboard */
+.changes-dashboard {
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  padding: 15px 20px;
+  display: none;
+}
+
+.changes-dashboard.show {
+  display: block;
+}
+
+.change-card {
+  background: #1e1e1e;
+  border-radius: 6px;
+  padding: 12px;
+  border-left: 4px solid;
+}
+
+.change-card.added { border-left-color: #27ae60; }
+.change-card.modified { border-left-color: #f39c12; }
+.change-card.deleted { border-left-color: #e74c3c; }
+
+/* Input Fields */
+.vscode-input {
+  background: #3c3c3c;
+  border: 1px solid #3e3e42;
+  color: #cccccc;
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 3px;
+}
+
+.vscode-input:focus {
+  border-color: #007acc;
+  outline: none;
+}
+
+/* Buttons */
+.vscode-button {
+  background: #0e639c;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.vscode-button:hover {
+  background: #1177bb;
+}
+
+.vscode-button.secondary {
+  background: #3c3c3c;
+  color: #cccccc;
+}
+
+.vscode-button.secondary:hover {
+  background: #45494e;
+}

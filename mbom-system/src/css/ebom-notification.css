@@ -1,0 +1,637 @@
+/* Enhanced eBOM Notification System Styles */
+
+/* Hide notification bell icon only in header, not in status bar */
+.header .fa-bell,
+.toolbar .fa-bell {
+    display: none !important;
+}
+
+/* Hide bell buttons only in header, not in status bar */
+.header button:has(.fa-bell),
+.toolbar button:has(.fa-bell) {
+    display: none !important;
+}
+
+/* Notification Banner */
+.ebom-notification-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+    color: white;
+    padding: 12px 20px;
+    z-index: 10000;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.ebom-notification-banner.show {
+    transform: translateY(0);
+}
+
+.ebom-notification-banner .notification-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.ebom-notification-banner .notification-icon {
+    font-size: 24px;
+    margin-right: 15px;
+    animation: pulse 2s infinite;
+}
+
+.ebom-notification-banner .notification-message {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.ebom-notification-banner .notification-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.ebom-notification-banner .notification-details {
+    font-size: 12px;
+    opacity: 0.95;
+}
+
+.ebom-notification-banner .notification-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.ebom-notification-banner button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.ebom-notification-banner button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.ebom-notification-banner .notification-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.5);
+    animation: progress 30s linear;
+}
+
+/* Notification Container */
+.ebom-notification-container {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    max-width: 400px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Individual Notifications */
+.ebom-notification {
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateX(420px);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.ebom-notification.show {
+    transform: translateX(0);
+}
+
+.ebom-notification.fade-out {
+    opacity: 0;
+    transform: translateX(100px);
+}
+
+.ebom-notification.accepted {
+    border-left: 4px solid var(--vscode-success);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.ebom-notification.rejected {
+    border-left: 4px solid var(--vscode-error);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+/* Priority Indicators */
+.ebom-notification.high-priority {
+    border-left: 4px solid #ff4444;
+}
+
+.ebom-notification.medium-priority {
+    border-left: 4px solid #ffaa00;
+}
+
+.ebom-notification.low-priority {
+    border-left: 4px solid #44ff44;
+}
+
+/* Notification Header */
+.ebom-notification .notification-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--vscode-text-secondary);
+}
+
+.ebom-notification .notification-icon {
+    font-size: 18px;
+}
+
+.ebom-notification .notification-type {
+    font-weight: 600;
+    color: var(--vscode-text);
+}
+
+.ebom-notification .priority-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.priority-badge.priority-high {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+}
+
+.priority-badge.priority-medium {
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffaa00;
+}
+
+.priority-badge.priority-low {
+    background: rgba(68, 255, 68, 0.2);
+    color: #44ff44;
+}
+
+.ebom-notification .notification-time {
+    margin-left: auto;
+}
+
+/* Notification Body */
+.ebom-notification .notification-body {
+    margin-bottom: 10px;
+}
+
+.ebom-notification .part-info {
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--vscode-text);
+}
+
+.ebom-notification .change-details {
+    font-size: 12px;
+    color: var(--vscode-text-secondary);
+    padding: 6px;
+    background: var(--vscode-sidebar);
+    border-radius: 3px;
+    margin-bottom: 6px;
+}
+
+.ebom-notification .impact-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--vscode-text-secondary);
+}
+
+.ebom-notification .affected-count {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ebom-notification .impact-level {
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.impact-major {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+}
+
+.impact-moderate {
+    background: rgba(255, 170, 0, 0.1);
+    color: #ffaa00;
+}
+
+.impact-minor {
+    background: rgba(68, 255, 68, 0.1);
+    color: #44ff44;
+}
+
+/* Notification Footer */
+.ebom-notification .notification-footer {
+    display: flex;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--vscode-border);
+}
+
+.ebom-notification .notification-footer button {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 11px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-button);
+    color: var(--vscode-text);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ebom-notification .btn-accept {
+    background: var(--vscode-success);
+    color: white;
+    border-color: var(--vscode-success);
+}
+
+.ebom-notification .btn-reject {
+    background: var(--vscode-error);
+    color: white;
+    border-color: var(--vscode-error);
+}
+
+.ebom-notification .btn-details {
+    background: var(--vscode-accent);
+    color: white;
+    border-color: var(--vscode-accent);
+}
+
+.ebom-notification .notification-footer button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Change Detail Modal */
+.ebom-change-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    animation: fadeIn 0.2s;
+}
+
+.ebom-change-modal .modal-content {
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.ebom-change-modal .modal-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--vscode-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ebom-change-modal .modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--vscode-text);
+}
+
+.ebom-change-modal .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--vscode-text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.ebom-change-modal .modal-close:hover {
+    background: var(--vscode-hover);
+}
+
+.ebom-change-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.ebom-change-modal .detail-section {
+    margin-bottom: 20px;
+}
+
+.ebom-change-modal .detail-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: var(--vscode-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ebom-change-modal .detail-row {
+    display: flex;
+    padding: 6px 0;
+    font-size: 13px;
+}
+
+.ebom-change-modal .detail-label {
+    width: 120px;
+    color: var(--vscode-text-secondary);
+}
+
+.ebom-change-modal .detail-value {
+    flex: 1;
+    color: var(--vscode-text);
+}
+
+.ebom-change-modal pre {
+    background: var(--vscode-sidebar);
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--vscode-text);
+    overflow-x: auto;
+}
+
+.ebom-change-modal .modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--vscode-border);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Dashboard Styles */
+#ebomChangesDashboard {
+    position: fixed;
+    right: -400px;
+    top: 60px;
+    bottom: 0;
+    width: 400px;
+    background: var(--vscode-panel);
+    border-left: 1px solid var(--vscode-border);
+    transition: right 0.3s ease;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+}
+
+#ebomChangesDashboard.show {
+    right: 0;
+}
+
+#ebomChangesDashboard .dashboard-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--vscode-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#ebomChangesDashboard .dashboard-stats {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    background: var(--vscode-sidebar);
+}
+
+.stat-card {
+    flex: 1;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+}
+
+.stat-card.pending {
+    border-color: #ffaa00;
+    background: rgba(255, 170, 0, 0.05);
+}
+
+.stat-card.accepted {
+    border-color: var(--vscode-success);
+    background: rgba(40, 167, 69, 0.05);
+}
+
+.stat-card.rejected {
+    border-color: var(--vscode-error);
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.stat-card .stat-number {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.stat-card .stat-label {
+    font-size: 11px;
+    color: var(--vscode-text-secondary);
+    text-transform: uppercase;
+}
+
+#dashboardContent {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.changes-list {
+    padding: 16px;
+}
+
+.changes-list h4 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: var(--vscode-text-secondary);
+    text-transform: uppercase;
+}
+
+.change-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: var(--vscode-sidebar);
+    border-radius: 4px;
+    border-left: 3px solid var(--vscode-border);
+    font-size: 12px;
+}
+
+.change-item.pending {
+    border-left-color: #ffaa00;
+}
+
+.change-item.accepted {
+    border-left-color: var(--vscode-success);
+}
+
+.change-item.rejected {
+    border-left-color: var(--vscode-error);
+}
+
+.change-item .change-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.change-item .change-status {
+    margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    text-transform: uppercase;
+    background: var(--vscode-panel);
+}
+
+.change-item .change-details {
+    color: var(--vscode-text-secondary);
+    margin-bottom: 4px;
+}
+
+.change-item .change-time {
+    font-size: 10px;
+    color: var(--vscode-text-secondary);
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 10002;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast.toast-success {
+    border-left: 4px solid var(--vscode-success);
+}
+
+.toast.toast-warning {
+    border-left: 4px solid #ffaa00;
+}
+
+.toast.toast-error {
+    border-left: 4px solid var(--vscode-error);
+}
+
+.toast.toast-info {
+    border-left: 4px solid var(--vscode-accent);
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes progress {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Badge Styles */
+.ebom-badge,
+#ebomBadge {
+    display: inline-block;
+    background: #ff4444;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+    min-width: 18px;
+    text-align: center;
+    animation: pulse 2s infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .ebom-notification-container {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+    
+    #ebomChangesDashboard {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .ebom-change-modal .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+}

@@ -1,0 +1,405 @@
+/* 통일된 상태바 디자인 시스템 */
+
+/* ============================================
+   기본 상태바 스타일
+   ============================================ */
+.status-bar {
+    height: 32px;
+    background: var(--vscode-statusBar-background, #007acc);
+    color: var(--vscode-statusBar-foreground, #ffffff);
+    border-top: 1px solid var(--vscode-border, #3c3c3c);
+    display: flex !important;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 12px;
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    flex-shrink: 0;
+    z-index: 1000 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* 상태바 좌측 영역 */
+.status-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+/* 상태바 우측 영역 */
+.status-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* 상태 아이템 */
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: inherit;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.status-item i {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+/* 상태 아이템 아이콘 색상 */
+.status-item .fa-database { color: #4fc3f7; }
+.status-item .fa-edit { color: #ffa726; }
+.status-item .fa-clock { color: #66bb6a; }
+.status-item .fa-save { color: #42a5f5; }
+.status-item .fa-sync-alt { color: #ab47bc; }
+.status-item .fa-exclamation-triangle { color: #ff7043; }
+.status-item .fa-check-circle { color: #66bb6a; }
+
+/* ============================================
+   알림 인디케이터
+   ============================================ */
+.notification-indicator {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 11px;
+    color: inherit;
+    min-height: 20px;
+}
+
+.notification-indicator:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.notification-indicator.has-notifications {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+}
+
+/* 알림 카운터 - 오른쪽에 작은 글씨로 배치 */
+.notification-count {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 2px;
+    line-height: 1;
+    vertical-align: baseline;
+}
+
+.notification-indicator.has-notifications .notification-count {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* ============================================
+   상태 표시기
+   ============================================ */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.status-indicator:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.status-indicator.ready {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.status-indicator.loading {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.status-indicator.error {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.status-indicator.saving {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196f3;
+    border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+/* ============================================
+   진행률 표시기
+   ============================================ */
+.progress-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+}
+
+.progress-bar {
+    width: 60px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #4caf50;
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+
+/* ============================================
+   자동 저장 표시
+   ============================================ */
+.auto-save-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.auto-save-indicator:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.auto-save-indicator.on {
+    color: #4caf50;
+}
+
+.auto-save-indicator.off {
+    color: #f44336;
+}
+
+.auto-save-indicator i {
+    font-size: 9px;
+}
+
+/* ============================================
+   시간 표시
+   ============================================ */
+.time-display {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Courier New', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.time-display:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   반응형 디자인
+   ============================================ */
+@media (max-width: 768px) {
+    .status-bar {
+        height: 28px;
+        padding: 0 12px;
+        font-size: 11px;
+    }
+    
+    .status-bar-left {
+        gap: 10px;
+    }
+    
+    .status-bar-right {
+        gap: 8px;
+    }
+    
+    .status-item {
+        font-size: 10px;
+    }
+    
+    .notification-indicator {
+        padding: 2px 6px;
+        font-size: 10px;
+        gap: 2px;
+    }
+    
+    .notification-count {
+        font-size: 8px;
+        margin-left: 1px;
+    }
+    
+    .status-indicator {
+        padding: 2px 6px;
+        font-size: 9px;
+    }
+    
+    .auto-save-indicator {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+    
+    .time-display {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .status-bar {
+        height: 30px;
+        padding: 0 8px;
+        font-size: 10px;
+    }
+    
+    .status-bar-left {
+        gap: 6px;
+    }
+    
+    .status-bar-right {
+        gap: 6px;
+    }
+    
+    .status-item {
+        font-size: 9px;
+    }
+    
+    .status-item i {
+        font-size: 8px;
+    }
+    
+    .notification-indicator {
+        padding: 1px 4px;
+        font-size: 9px;
+        gap: 1px;
+    }
+    
+    .notification-count {
+        font-size: 5px;
+        margin-left: 1px;
+    }
+    
+    .status-indicator {
+        padding: 1px 4px;
+        font-size: 8px;
+    }
+    
+    .auto-save-indicator {
+        font-size: 8px;
+        padding: 1px 3px;
+    }
+    
+    .time-display {
+        font-size: 8px;
+        padding: 1px 3px;
+    }
+}
+
+/* ============================================
+   다크 테마 지원
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+    .status-bar {
+        background: var(--vscode-statusBar-background, #1e1e1e);
+        color: var(--vscode-statusBar-foreground, #cccccc);
+        border-top-color: var(--vscode-border, #464647);
+    }
+    
+    .notification-indicator {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .notification-indicator:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+}
+
+/* ============================================
+   애니메이션
+   ============================================ */
+.status-bar {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 상태 변경 애니메이션 */
+.status-item.updated {
+    animation: highlight 0.5s ease-out;
+}
+
+@keyframes highlight {
+    0% { background: rgba(255, 193, 7, 0.3); }
+    100% { background: transparent; }
+}
+
+/* ============================================
+   접근성
+   ============================================ */
+.status-bar:focus-within {
+    outline: 2px solid var(--vscode-focusBorder, #007acc);
+    outline-offset: -2px;
+}
+
+.notification-indicator:focus {
+    outline: 2px solid var(--vscode-focusBorder, #007acc);
+    outline-offset: 2px;
+}
+
+/* 스크린 리더를 위한 숨김 텍스트 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

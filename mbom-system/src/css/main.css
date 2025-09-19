@@ -1,0 +1,450 @@
+/* 메인 스타일 */
+:root {
+    --primary-color: #4a69bd;
+    --secondary-color: #718093;
+    --success-color: #6ab04c;
+    --warning-color: #f0932b;
+    --danger-color: #eb4d4b;
+    --light-gray: #f5f6fa;
+    --border-color: #dcdde1;
+}
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--light-gray);
+}
+
+/* 범례 스타일 */
+.legend-container {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* 트리 컨테이너 */
+#treeContainer {
+    font-size: 0.875rem;
+}
+
+.tree-node {
+    padding: 5px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+}
+
+/* 배포 관련 버튼 스타일 */
+#btnDeploy {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#btnDeploy:hover {
+    background-color: #2980b9;
+}
+
+#btnDeploy:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+#btnDeploymentHistory {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#btnDeploymentHistory:hover {
+    background-color: #138496;
+}
+
+/* 배포 알림 스타일 */
+.deployment-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 10000;
+    max-width: 350px;
+    animation: slideIn 0.3s ease;
+}
+
+.deployment-notification.success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.deployment-notification.error {
+    background-color: #f44336;
+    color: white;
+}
+
+.deployment-notification.warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.deployment-notification.info {
+    background-color: #2196F3;
+    color: white;
+}
+
+/* 배포 이력 다이얼로그 */
+.deployment-history-dialog {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    padding: 20px;
+    max-width: 700px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.deployment-history-dialog h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+.deployment-history-dialog table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.deployment-history-dialog th {
+    background-color: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    text-align: left;
+    padding: 10px;
+    border-bottom: 2px solid #dcdde1;
+}
+
+.deployment-history-dialog td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.deployment-history-dialog tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 툴바 구분선 */
+.toolbar-separator {
+    width: 1px;
+    height: 24px;
+    background-color: #dcdde1;
+    margin: 0 10px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Part Number 계층 구조 스타일 */
+.part-hierarchy {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 2px 0;
+}
+
+/* 레벨 컬럼 스타일 개선 */
+.level-cell {
+    text-align: center;
+    vertical-align: middle;
+    position: relative;
+}
+
+.level-cell.level-active {
+    font-weight: bold;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+.level-cell.level-active::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -10px;
+    width: 10px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 레벨별 위치 표시기 */
+.level-position-0 {
+    border-left: 3px solid #4a69bd !important;
+}
+
+.level-position-1 {
+    border-left: 2px solid #718093 !important;
+}
+
+.level-position-2,
+.level-position-3,
+.level-position-4 {
+    border-left: 1px solid #3e3e42 !important;
+}
+
+.part-number-text {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    color: #333;
+}
+
+.part-number-text.level-0-bold {
+    font-weight: bold;
+}
+
+.expand-icon-grid {
+    display: inline-block;
+    width: 12px;
+    cursor: pointer;
+    margin-right: 4px;
+    color: #666;
+    user-select: none;
+    font-size: 11px;
+    transition: color 0.2s;
+}
+
+.expand-icon-grid:hover {
+    color: #000;
+}
+
+.assy-badge {
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* Level badge 스타일 */
+.level-compact-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    min-width: 20px;
+}
+
+.level-compact-badge-0 {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.level-compact-badge-1 {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.level-compact-badge-2 {
+    background-color: #e8f5e9;
+    color: #388e3c;
+}
+
+.level-compact-badge-3 {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+/* 테이블 행 스타일 */
+.bom-table tbody tr.level-0 {
+    background-color: #f8f9fa;
+    font-weight: 500;
+}
+
+.bom-table tbody tr.level-1 {
+    background-color: #ffffff;
+}
+
+.bom-table tbody tr.level-2 {
+    background-color: #fafafa;
+}
+
+.bom-table tbody tr.level-3 {
+    background-color: #f5f5f5;
+}
+
+.bom-table tbody tr:hover {
+    background-color: #e8f4fd !important;
+}
+
+/* ASSY 태그 스타일 */
+.part-hierarchy span[style*="ASSY"] {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 6px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.tree-node:hover {
+    background-color: var(--light-gray);
+}
+
+.tree-node.selected {
+    background-color: #e3f2fd;
+}
+
+.tree-node-checkbox {
+    margin-right: 5px;
+}
+
+.tree-node-icon {
+    margin-right: 5px;
+    color: var(--secondary-color);
+}
+
+.tree-node-text {
+    flex: 1;
+}
+
+/* 컨텍스트 메뉴 */
+.context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    min-width: 180px;
+}
+
+.context-menu ul {
+    padding: 5px 0;
+}
+
+.context-menu li {
+    list-style: none;
+}
+
+.context-menu li a {
+    display: block;
+    padding: 8px 15px;
+    color: #333;
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.context-menu li a:hover {
+    background-color: var(--light-gray);
+}
+
+.context-menu li.divider,
+.context-menu-separator {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 5px 0;
+}
+
+.context-menu li a.disabled {
+    color: #999;
+    pointer-events: none;
+}
+
+/* 버튼 스타일 */
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* 카드 스타일 */
+.card {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+}
+
+/* 폼 스타일 */
+.form-label.small {
+    font-size: 0.8125rem;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.form-select-sm,
+.form-control-sm {
+    font-size: 0.875rem;
+}
+
+/* 미리보기 영역 */
+#previewContainer {
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#previewContainer img {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+}
+
+/* 전체화면 모드 */
+.fullscreen-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: white;
+}
+
+.fullscreen-mode #bomGrid {
+    height: calc(100vh - 100px) !important;
+}
+
+/* 반응형 설정 */
+@media (max-width: 768px) {
+    .legend-container {
+        flex-wrap: wrap;
+        font-size: 0.75rem;
+    }
+    
+    .btn-toolbar {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+}

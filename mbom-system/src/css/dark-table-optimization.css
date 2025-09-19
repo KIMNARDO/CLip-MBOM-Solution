@@ -1,0 +1,275 @@
+/* ============================================
+   Dark Mode Table Optimization
+   Optimized Level Columns & Dark Color Palette
+   ============================================ */
+
+/* ====== Level Column Width Optimization ====== */
+.bom-table thead th[colspan] {
+    /* Optimize level header width */
+    width: auto !important;
+}
+
+/* Individual level column widths - reduced from 60px to 45px */
+.bom-table thead th.level-header,
+.bom-table tbody td.level-cell {
+    width: 45px !important;
+    min-width: 45px !important;
+    max-width: 45px !important;
+    padding: 4px 2px !important;
+    text-align: center !important;
+}
+
+/* Level column group - dynamic width based on count */
+.level-column-group {
+    width: calc(var(--level-count, 5) * 45px) !important;
+}
+
+/* ====== Dark Mode Color Palette for Levels ====== */
+:root {
+    /* Level background colors - dark mode optimized */
+    --level-0-bg: #2d2d30;      /* Dark grey */
+    --level-1-bg: #1e3a1e;      /* Dark green */
+    --level-2-bg: #1e2a3a;      /* Dark blue */
+    --level-3-bg: #2a1e3a;      /* Dark purple */
+    --level-4-bg: #3a2a1e;      /* Dark orange */
+    --level-5-bg: #1e2d2d;      /* Dark teal */
+    --level-6-bg: #2d2d1e;      /* Dark olive */
+    --level-7-bg: #3a1e1e;      /* Dark red */
+    --level-8-bg: #252528;      /* Darker grey */
+    --level-9-bg: #1e1e1e;      /* Almost black */
+
+    /* Level text colors for contrast */
+    --level-0-text: #e0e0e0;    /* Light grey */
+    --level-1-text: #a5d6a7;    /* Light green */
+    --level-2-text: #90caf9;    /* Light blue */
+    --level-3-text: #ce93d8;    /* Light purple */
+    --level-4-text: #ffb74d;    /* Light orange */
+    --level-5-text: #80cbc4;    /* Light teal */
+    --level-6-text: #c5e1a5;    /* Light olive */
+    --level-7-text: #ef9a9a;    /* Light red */
+    --level-8-text: #bdbdbd;    /* Medium grey */
+    --level-9-text: #9e9e9e;    /* Dark grey */
+
+    /* Empty level cell colors - very subtle */
+    --level-empty-0: #26262a;
+    --level-empty-1: #1a2a1a;
+    --level-empty-2: #1a2232;
+    --level-empty-3: #221a32;
+    --level-empty-4: #32221a;
+    --level-empty-5: #1a2626;
+    --level-empty-6: #26261a;
+    --level-empty-7: #321a1a;
+    --level-empty-8: #202023;
+    --level-empty-9: #1a1a1a;
+
+    /* Grid lines and borders */
+    --grid-border: #3e3e42;
+    --grid-border-subtle: #2a2a2e;
+
+    /* Row states */
+    --row-hover: #2a2d2e;
+    --row-selected: #094771;
+    --row-selected-border: #0066cc;
+}
+
+/* Apply dark mode colors to level cells */
+.bom-table tbody td.level-0 {
+    background-color: var(--level-0-bg) !important;
+    color: var(--level-0-text) !important;
+}
+.bom-table tbody td.level-1 {
+    background-color: var(--level-1-bg) !important;
+    color: var(--level-1-text) !important;
+}
+.bom-table tbody td.level-2 {
+    background-color: var(--level-2-bg) !important;
+    color: var(--level-2-text) !important;
+}
+.bom-table tbody td.level-3 {
+    background-color: var(--level-3-bg) !important;
+    color: var(--level-3-text) !important;
+}
+.bom-table tbody td.level-4 {
+    background-color: var(--level-4-bg) !important;
+    color: var(--level-4-text) !important;
+}
+.bom-table tbody td.level-5 {
+    background-color: var(--level-5-bg) !important;
+    color: var(--level-5-text) !important;
+}
+
+/* Empty level cells */
+.bom-table tbody td.level-empty-0 { background-color: var(--level-empty-0) !important; }
+.bom-table tbody td.level-empty-1 { background-color: var(--level-empty-1) !important; }
+.bom-table tbody td.level-empty-2 { background-color: var(--level-empty-2) !important; }
+.bom-table tbody td.level-empty-3 { background-color: var(--level-empty-3) !important; }
+.bom-table tbody td.level-empty-4 { background-color: var(--level-empty-4) !important; }
+
+/* ====== Grid Lines and Borders ====== */
+.bom-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--grid-border);
+}
+
+.bom-table thead th {
+    border: 1px solid var(--grid-border);
+    background: var(--vscode-panel-background);
+}
+
+.bom-table tbody td {
+    border: 1px solid var(--grid-border-subtle);
+}
+
+/* Level cells with stronger borders */
+.bom-table tbody td[class*="level-"] {
+    border: 1px solid var(--grid-border);
+}
+
+/* ====== Row States ====== */
+.bom-table tbody tr:hover {
+    background-color: var(--row-hover) !important;
+}
+
+.bom-table tbody tr:hover td:not([class*="level-"]) {
+    background-color: var(--row-hover) !important;
+}
+
+.bom-table tbody tr.selected {
+    background-color: var(--row-selected) !important;
+    box-shadow: inset 0 0 0 2px var(--row-selected-border);
+}
+
+.bom-table tbody tr.selected td:not([class*="level-"]) {
+    background-color: var(--row-selected) !important;
+}
+
+/* ====== Text Readability Enhancement ====== */
+.bom-table tbody td {
+    color: var(--vscode-foreground);
+}
+
+/* Level numbers - bold and centered */
+.bom-table tbody td[class*="level-"]:not(.level-empty) {
+    font-weight: 600;
+    font-size: 13px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Important columns with better contrast */
+.bom-table tbody td.part-number {
+    color: #4ec9b0;  /* Cyan for part numbers */
+    font-weight: 500;
+}
+
+.bom-table tbody td.part-name {
+    color: #d4d4d4;  /* Standard text */
+}
+
+.bom-table tbody td.quantity {
+    color: #ce9178;  /* Orange for quantities */
+    font-weight: 500;
+    text-align: center;
+}
+
+.bom-table tbody td.status {
+    font-weight: 500;
+}
+
+/* Status color coding */
+.bom-table tbody td.status-active {
+    color: #4ec9b0;  /* Green for active */
+}
+
+.bom-table tbody td.status-inactive {
+    color: #f48771;  /* Red for inactive */
+}
+
+.bom-table tbody td.status-pending {
+    color: #dcdcaa;  /* Yellow for pending */
+}
+
+/* ====== Column Optimization ====== */
+/* Redistribute space from level columns to content columns */
+.bom-table thead th.part-number,
+.bom-table tbody td.part-number {
+    width: 220px !important;  /* Increased from 200px */
+    min-width: 220px !important;
+}
+
+.bom-table thead th.part-name,
+.bom-table tbody td.part-name {
+    width: 300px !important;  /* Increased from 250px */
+    min-width: 300px !important;
+}
+
+/* ====== Level Indicator Styling ====== */
+.level-indicator {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+/* ====== Focus Mode Enhancement ====== */
+.focus-mode .bom-table tbody tr:focus-within {
+    outline: 2px solid var(--vscode-focusBorder);
+    outline-offset: -2px;
+}
+
+/* ====== Scrollbar Styling ====== */
+.grid-wrapper::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.grid-wrapper::-webkit-scrollbar-track {
+    background: var(--vscode-scrollbarSlider-background);
+}
+
+.grid-wrapper::-webkit-scrollbar-thumb {
+    background: var(--vscode-scrollbarSlider-hoverBackground);
+    border-radius: 6px;
+}
+
+.grid-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-activeBackground);
+}
+
+/* ====== Animation for Smooth Transitions ====== */
+.bom-table tbody tr {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bom-table tbody td[class*="level-"] {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ====== Print Mode ====== */
+@media print {
+    .bom-table tbody td[class*="level-"] {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+}
+
+/* ====== Responsive Adjustments ====== */
+@media (max-width: 1600px) {
+    /* Further reduce level column widths on smaller screens */
+    .bom-table thead th.level-header,
+    .bom-table tbody td.level-cell {
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+    }
+
+    .level-column-group {
+        width: calc(var(--level-count, 5) * 40px) !important;
+    }
+}

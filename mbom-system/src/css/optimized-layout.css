@@ -1,0 +1,425 @@
+/* ============================================
+   Optimized Layout - Table-Centric Design
+   ============================================ */
+
+:root {
+    --sidebar-width: 250px;
+    --sidebar-collapsed: 50px;
+    --control-panel-height: 45px;
+}
+
+/* Main Container - Full Screen */
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Collapsible Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    transition: width 0.3s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed);
+}
+
+.sidebar.collapsed .sidebar-header {
+    padding: 10px 5px;
+}
+
+.sidebar.collapsed .search-box {
+    display: none;
+}
+
+.sidebar.collapsed .tree-container {
+    display: none;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 40px;
+    background: var(--vscode-button-background);
+    border: 1px solid var(--vscode-border);
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    color: white;
+    font-size: 12px;
+}
+
+.sidebar-toggle:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+/* Main Content - Maximized */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Unified Controls - Compact */
+.unified-controls {
+    height: var(--control-panel-height);
+    min-height: var(--control-panel-height);
+    padding: 6px 15px !important;
+    background: var(--vscode-panel-background);
+    border-bottom: 1px solid var(--vscode-border);
+    display: flex;
+    align-items: center;
+}
+
+.unified-controls .btn {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.unified-controls .btn-sm {
+    padding: 3px 8px;
+    font-size: 11px;
+}
+
+/* Grid Container - Full Height */
+.grid-container {
+    flex: 1;
+    overflow: auto;
+    padding: 0;
+    background: var(--vscode-editor-background);
+}
+
+.grid-wrapper {
+    height: 100%;
+    overflow: auto;
+}
+
+/* BOM Table - Optimized */
+.bom-table {
+    width: 100%;
+    table-layout: auto;
+}
+
+.bom-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--vscode-panel-background);
+}
+
+.bom-table tbody tr {
+    transition: background-color 0.1s;
+}
+
+.bom-table tbody tr:hover {
+    background: var(--vscode-list-hoverBackground) !important;
+}
+
+.bom-table tbody tr.selected {
+    background: rgba(0, 122, 204, 0.15) !important;
+    box-shadow: inset 3px 0 0 var(--vscode-button-background);
+}
+
+/* Property Overlay - Slide-in Panel */
+.property-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    display: none;
+    animation: fadeIn 0.2s;
+}
+
+.property-overlay.show {
+    display: block;
+}
+
+.property-panel-slide {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 400px;
+    background: var(--vscode-sidebar-background);
+    border-left: 1px solid var(--vscode-border);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
+    transform: translateX(100%);
+    animation: slideIn 0.3s forwards;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.property-header {
+    padding: 15px;
+    background: var(--vscode-panel-background);
+    border-bottom: 1px solid var(--vscode-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.property-header .btn-close {
+    background: transparent;
+    border: none;
+    color: var(--vscode-text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.property-header .btn-close:hover {
+    color: var(--vscode-text-foreground);
+}
+
+.property-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+/* Drawing Preview Modal */
+.drawing-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.drawing-modal.show {
+    display: flex;
+}
+
+.drawing-modal-content {
+    width: 80%;
+    height: 80%;
+    background: var(--vscode-editor-background);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    animation: zoomIn 0.3s;
+}
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.drawing-modal-header {
+    padding: 15px;
+    background: var(--vscode-panel-background);
+    border-bottom: 1px solid var(--vscode-border);
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.drawing-modal-body {
+    flex: 1;
+    padding: 20px;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drawing-viewer {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Keyboard Shortcuts Help */
+.shortcuts-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--vscode-panel-background);
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    padding: 10px 15px;
+    font-size: 11px;
+    color: var(--vscode-text-secondary);
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.shortcuts-hint:hover {
+    opacity: 1;
+}
+
+.shortcuts-hint kbd {
+    background: var(--vscode-input-background);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin: 0 2px;
+    font-family: monospace;
+}
+
+/* Status Bar - Compact */
+.status-bar {
+    height: 25px;
+    padding: 0 15px;
+    background: var(--vscode-statusBar-background);
+    border-top: 1px solid var(--vscode-border);
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--vscode-statusBar-foreground);
+}
+
+.status-item {
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-item i {
+    font-size: 10px;
+}
+
+/* Responsive Column Widths */
+@media (min-width: 1600px) {
+    .bom-table {
+        font-size: 13px;
+    }
+
+    .property-panel-slide {
+        width: 450px;
+    }
+}
+
+@media (min-width: 1920px) {
+    .bom-table {
+        font-size: 14px;
+    }
+
+    .property-panel-slide {
+        width: 500px;
+    }
+}
+
+/* Focus Mode */
+.focus-mode .header,
+.focus-mode .toolbar,
+.focus-mode .unified-controls,
+.focus-mode .status-bar {
+    display: none;
+}
+
+.focus-mode .grid-container {
+    padding: 0;
+}
+
+.focus-mode .main-content {
+    height: 100vh;
+}
+
+/* Toolbar Optimization */
+.toolbar {
+    padding: 8px 15px;
+    gap: 8px;
+}
+
+.toolbar .btn {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.toolbar .btn-icon {
+    padding: 6px 8px;
+}
+
+/* Enhanced Row Selection */
+.bom-table tbody tr {
+    cursor: pointer;
+    user-select: none;
+}
+
+.bom-table tbody tr.multi-selected {
+    background: rgba(0, 122, 204, 0.1) !important;
+}
+
+/* Compact Mode */
+.compact-mode .bom-table {
+    font-size: 11px;
+}
+
+.compact-mode .bom-table th,
+.compact-mode .bom-table td {
+    padding: 4px 6px;
+}
+
+.compact-mode .unified-controls {
+    height: 35px;
+    min-height: 35px;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--vscode-button-background);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

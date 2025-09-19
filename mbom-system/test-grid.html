@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AG Grid Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/styles/ag-theme-alpine.css">
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #myGrid {
+            height: 600px;
+            width: 100%;
+        }
+        .status-info {
+            padding: 10px;
+            background: #f0f0f0;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AG Grid 테스트 페이지</h1>
+    <div class="status-info">
+        <p>이 페이지는 AG Grid가 정상적으로 작동하는지 확인합니다.</p>
+        <p>드래그 앤 드롭으로 행을 이동할 수 있습니다.</p>
+    </div>
+
+    <div id="myGrid" class="ag-theme-alpine"></div>
+
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
+    <script>
+        // BOM 샘플 데이터
+        const rowData = [
+            { id: 1, level: 0, partNumber: 'ENGINE-ASM-001', description: '엔진 어셈블리', quantity: 1, unit: 'EA' },
+            { id: 2, level: 1, partNumber: 'ENG-BLOCK-SYS-001', description: '엔진 블록 시스템', quantity: 1, unit: 'EA' },
+            { id: 3, level: 2, partNumber: 'CYL-ASM-001', description: '실린더 어셈블리', quantity: 4, unit: 'EA' },
+            { id: 4, level: 3, partNumber: 'PISTON-001', description: '피스톤', quantity: 1, unit: 'EA' },
+            { id: 5, level: 3, partNumber: 'CON-ROD-001', description: '커넥팅 로드', quantity: 1, unit: 'EA' }
+        ];
+
+        // 컬럼 정의
+        const columnDefs = [
+            {
+                headerName: '',
+                field: 'drag',
+                rowDrag: true,
+                width: 50,
+                suppressMenu: true
+            },
+            { headerName: 'Level', field: 'level', width: 80 },
+            { headerName: '품번', field: 'partNumber', width: 200 },
+            { headerName: '품명', field: 'description', width: 250 },
+            { headerName: '수량', field: 'quantity', width: 100 },
+            { headerName: '단위', field: 'unit', width: 80 }
+        ];
+
+        // 그리드 옵션
+        const gridOptions = {
+            columnDefs: columnDefs,
+            rowData: rowData,
+            defaultColDef: {
+                sortable: true,
+                filter: true,
+                resizable: true
+            },
+            animateRows: true,
+            rowDragManaged: false, // Manual control
+            suppressMoveWhenRowDragging: true,
+            onRowDragEnd: function(event) {
+                console.log('Row dragged from index', event.overIndex, 'to', event.node.rowIndex);
+                console.log('Dragged node:', event.node.data);
+                alert('행이 이동되었습니다: ' + event.node.data.partNumber);
+            }
+        };
+
+        // 그리드 생성
+        document.addEventListener('DOMContentLoaded', function() {
+            const gridDiv = document.querySelector('#myGrid');
+            new agGrid.Grid(gridDiv, gridOptions);
+
+            console.log('AG Grid initialized successfully');
+        });
+    </script>
+</body>
+</html>

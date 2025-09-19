@@ -1,0 +1,416 @@
+/* Layout Fix CSS - Responsive Grid and Proper Sizing */
+
+/* ============================================
+   Main Layout Structure
+   ============================================ */
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Sidebar - Fixed width with resize */
+.sidebar {
+    width: 250px;
+    min-width: 200px;
+    max-width: 400px;
+    height: 100vh;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--vscode-sidebar);
+    border-right: 1px solid var(--vscode-border);
+    position: relative;
+}
+
+/* Main Content - Flexible width */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Remove inline margin styles via JavaScript */
+.main-content[style*="margin-right"] {
+    margin-right: 0 !important;
+}
+
+.main-content[style*="margin-left"] {
+    margin-left: 0 !important;
+}
+
+/* Header - Fixed height */
+.header {
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--vscode-panel);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+/* Menu Bar - Fixed height */
+.top-menu-bar {
+    flex-shrink: 0;
+    background: var(--vscode-sidebar);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+/* Toolbar - Fixed height */
+.toolbar {
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+    background: var(--vscode-panel);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+/* Grid Container - Flexible height */
+.grid-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.grid-wrapper {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+/* BOM Table - Full width */
+.bom-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.bom-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--vscode-sidebar);
+}
+
+.bom-table th {
+    background: var(--vscode-sidebar);
+    border-bottom: 2px solid var(--vscode-border);
+    padding: 8px;
+    text-align: left;
+    position: relative;
+}
+
+.bom-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+/* Status Bar - Fixed height */
+.status-bar {
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: var(--vscode-sidebar);
+    border-top: 1px solid var(--vscode-border);
+    gap: 16px;
+}
+
+/* Property Panel - Fixed width with resize */
+.property-panel {
+    width: 300px;
+    min-width: 250px;
+    max-width: 500px;
+    height: 100vh;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--vscode-panel);
+    border-left: 1px solid var(--vscode-border);
+    position: relative;
+}
+
+.property-panel.collapsed {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    border: none;
+}
+
+/* ============================================
+   Status Bar Notification Enhancement
+   ============================================ */
+
+.status-bar .status-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--vscode-text-secondary);
+}
+
+.status-bar .notification-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    background: rgba(255, 170, 0, 0.1);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.status-bar .notification-indicator:hover {
+    background: rgba(255, 170, 0, 0.2);
+    border-color: rgba(255, 170, 0, 0.5);
+}
+
+.status-bar .notification-indicator.has-notifications {
+    animation: subtle-pulse 2s infinite;
+}
+
+@keyframes subtle-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.notification-count {
+    background: var(--vscode-error);
+    color: white;
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 16px;
+    text-align: center;
+}
+
+/* ============================================
+   Drawing Preview in Property Panel
+   ============================================ */
+
+.property-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.property-header {
+    padding: 12px;
+    background: var(--vscode-sidebar);
+    border-bottom: 1px solid var(--vscode-border);
+    font-weight: 600;
+}
+
+.property-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+/* Drawing Preview Section at Bottom */
+.drawing-preview-section {
+    height: 300px;
+    min-height: 200px;
+    max-height: 400px;
+    border-top: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.drawing-preview-section.collapsed {
+    height: 32px;
+    min-height: 32px;
+}
+
+.drawing-preview-header {
+    padding: 8px 12px;
+    background: var(--vscode-sidebar);
+    border-bottom: 1px solid var(--vscode-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.drawing-preview-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #1e1e1e;
+}
+
+/* Preview Resize Handle */
+.drawing-preview-resize {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    cursor: ns-resize;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.drawing-preview-resize:hover {
+    background: var(--vscode-accent);
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+@media (max-width: 1400px) {
+    .sidebar {
+        width: 200px;
+    }
+    
+    .property-panel {
+        width: 250px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .bom-table {
+        font-size: 12px;
+    }
+    
+    .bom-table th,
+    .bom-table td {
+        padding: 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 1px solid var(--vscode-border);
+    }
+    
+    .property-panel {
+        position: fixed;
+        right: -100%;
+        top: 0;
+        width: 80%;
+        z-index: 1000;
+        transition: right 0.3s;
+    }
+    
+    .property-panel.show {
+        right: 0;
+    }
+}
+
+/* ============================================
+   Fix Notification Overload
+   ============================================ */
+
+/* Hide excessive notifications */
+.ebom-notification-banner {
+    display: none; /* Hide top banner by default */
+}
+
+.ebom-notification-banner.important {
+    display: block; /* Show only for important notifications */
+}
+
+/* Limit notification popups */
+.ebom-notification-container {
+    max-height: 200px;
+    overflow: hidden;
+}
+
+.ebom-notification-container .ebom-notification:nth-child(n+3) {
+    display: none; /* Show max 2 notifications */
+}
+
+/* Make notifications smaller */
+.ebom-notification {
+    padding: 8px;
+    font-size: 11px;
+    max-width: 300px;
+}
+
+.ebom-notification .notification-header {
+    font-size: 11px;
+}
+
+.ebom-notification .notification-body {
+    font-size: 10px;
+}
+
+.ebom-notification .notification-footer {
+    padding-top: 6px;
+}
+
+.ebom-notification .notification-footer button {
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+/* ============================================
+   Grid Auto-Sizing
+   ============================================ */
+
+.grid-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.bom-table {
+    min-width: 100%;
+    width: auto;
+}
+
+/* Ensure table fills available space */
+.grid-container {
+    container-type: inline-size;
+}
+
+@container (min-width: 1200px) {
+    .bom-table {
+        font-size: 13px;
+    }
+}
+
+@container (min-width: 1600px) {
+    .bom-table {
+        font-size: 14px;
+    }
+    
+    .bom-table th,
+    .bom-table td {
+        padding: 10px;
+    }
+}
