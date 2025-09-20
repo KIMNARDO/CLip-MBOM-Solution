@@ -1,14 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const UnifiedNotificationManager = () => {
-  const { notifications, removeNotification, clearAllNotifications } = useNotification();
+  const { theme } = useTheme();
+  const { notifications, removeNotification, clearAllNotifications, markAsRead } = useNotification();
   const [isExpanded, setIsExpanded] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const unread = notifications.filter(n => !n.read).length;
     setUnreadCount(unread);
+
+    // 새 알림이 있을 때 벨 아이콘 애니메이션 효과
+    if (unread > 0) {
+      const bellIcon = document.querySelector('.notification-bell');
+      if (bellIcon) {
+        bellIcon.style.animation = 'bellShake 0.5s';
+        setTimeout(() => {
+          if (bellIcon) bellIcon.style.animation = '';
+        }, 500);
+      }
+    }
   }, [notifications]);
 
   const getNotificationIcon = (type) => {
@@ -25,16 +38,30 @@ const UnifiedNotificationManager = () => {
   };
 
   const getNotificationColor = (type) => {
-    switch(type) {
-      case 'success': return '#4caf50';
-      case 'warning': return '#ff9800';
-      case 'error': return '#f44336';
-      case 'info': return '#2196f3';
-      case 'approval': return '#9c27b0';
-      case 'sync': return '#00bcd4';
-      case 'change': return '#ff5722';
-      default: return '#607d8b';
-    }
+    const colors = {
+      dark: {
+        success: '#4caf50',
+        warning: '#ff9800',
+        error: '#f44336',
+        info: '#2196f3',
+        approval: '#9c27b0',
+        sync: '#00bcd4',
+        change: '#ff5722',
+        default: '#607d8b'
+      },
+      light: {
+        success: '#2e7d32',
+        warning: '#ed6c02',
+        error: '#d32f2f',
+        info: '#0288d1',
+        approval: '#7b1fa2',
+        sync: '#00838f',
+        change: '#d84315',
+        default: '#455a64'
+      }
+    };
+    const themeColors = theme === 'dark' ? colors.dark : colors.light;
+    return themeColors[type] || themeColors.default;
   };
 
   const formatTime = (timestamp) => {
@@ -52,23 +79,35 @@ const UnifiedNotificationManager = () => {
     <>
       {/* Notification Bell Icon */}
       <div
+        className="notification-bell"
         style={{
           position: 'fixed',
-          top: '20px',
+          bottom: '30px',
           right: '20px',
           width: '40px',
           height: '40px',
-          background: unreadCount > 0 ? '#007acc' : '#5a5a5a',
+          background: unreadCount > 0 ? (theme === 'dark' ? '#ff6b6b' : '#ef4444') : (theme === 'dark' ? '#3c3c3c' : '#9ca3af'),
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          zIndex: 1000,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+          zIndex: 9999,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
+          border: unreadCount > 0 ? (theme === 'dark' ? '2px solid #ffcc00' : '2px solid #fbbf24') : (theme === 'dark' ? '1px solid #505050' : '1px solid #d1d5db'),
           transition: 'all 0.3s'
         }}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          setIsExpanded(!isExpanded);
+          // 패널을 열면 알림을 읽음으로 표시
+          if (!isExpanded && notifications.length > 0) {
+            notifications.forEach(n => {
+              if (!n.read && markAsRead) {
+                markAsRead(n.id);
+              }
+            });
+          }
+        }}
         title={`${unreadCount} 개의 읽지 않은 알림`}
       >
         <span style={{ color: '#fff', fontSize: '20px' }}>🔔</span>
@@ -78,7 +117,7 @@ const UnifiedNotificationManager = () => {
               position: 'absolute',
               top: '-5px',
               right: '-5px',
-              background: '#f44336',
+              background: theme === 'dark' ? '#f44336' : '#ef4444',
               color: '#fff',
               borderRadius: '50%',
               width: '20px',
@@ -100,15 +139,15 @@ const UnifiedNotificationManager = () => {
         <div
           style={{
             position: 'fixed',
-            top: '70px',
+            bottom: '80px',
             right: '20px',
-            width: '380px',
-            maxHeight: '500px',
-            background: 'var(--vscode-editor-background)',
-            border: '1px solid var(--vscode-panel-border)',
-            borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-            zIndex: 999,
+            width: '320px',
+            maxHeight: '400px',
+            background: theme === 'dark' ? '#1e1e1e' : '#ffffff',
+            border: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb',
+            borderRadius: '6px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.8)',
+            zIndex: 9998,
             display: 'flex',
             flexDirection: 'column'
           }}
@@ -116,17 +155,20 @@ const UnifiedNotificationManager = () => {
           {/* Header */}
           <div
             style={{
-              padding: '15px',
-              borderBottom: '1px solid var(--vscode-panel-border)',
+              padding: '12px',
+              borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb',
+              background: theme === 'dark' ? '#252526' : '#f9fafb',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              borderRadius: '6px 6px 0 0'
             }}
           >
             <h3 style={{
               margin: 0,
-              fontSize: '16px',
-              color: 'var(--vscode-text-foreground)'
+              fontSize: '14px',
+              color: theme === 'dark' ? '#cccccc' : '#111827',
+              fontWeight: '600'
             }}>
               알림 센터
             </h3>
@@ -137,10 +179,11 @@ const UnifiedNotificationManager = () => {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: 'var(--vscode-text-secondary)',
+                    color: theme === 'dark' ? '#969696' : '#6b7280',
                     cursor: 'pointer',
-                    fontSize: '12px',
-                    padding: '4px 8px'
+                    fontSize: '11px',
+                    padding: '2px 6px',
+                    hover: { color: '#cccccc' }
                   }}
                   title="모두 삭제"
                 >
@@ -152,9 +195,10 @@ const UnifiedNotificationManager = () => {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: 'var(--vscode-text-secondary)',
+                  color: theme === 'dark' ? '#969696' : '#6b7280',
                   cursor: 'pointer',
-                  fontSize: '18px'
+                  fontSize: '16px',
+                  padding: '0 4px'
                 }}
               >
                 ×
@@ -167,15 +211,16 @@ const UnifiedNotificationManager = () => {
             style={{
               flex: 1,
               overflowY: 'auto',
-              maxHeight: '400px'
+              maxHeight: '300px',
+              background: theme === 'dark' ? '#1e1e1e' : '#ffffff'
             }}
           >
             {notifications.length === 0 ? (
               <div
                 style={{
-                  padding: '40px',
+                  padding: '30px',
                   textAlign: 'center',
-                  color: 'var(--vscode-text-secondary)'
+                  color: theme === 'dark' ? '#969696' : '#6b7280'
                 }}
               >
                 <div style={{ fontSize: '40px', marginBottom: '10px' }}>📭</div>
@@ -186,24 +231,24 @@ const UnifiedNotificationManager = () => {
                 <div
                   key={notification.id}
                   style={{
-                    padding: '12px 15px',
-                    borderBottom: '1px solid var(--vscode-panel-border)',
-                    background: notification.read ? 'transparent' : 'rgba(0, 122, 204, 0.05)',
+                    padding: '10px 12px',
+                    borderBottom: theme === 'dark' ? '1px solid #2d2d30' : '1px solid #e5e7eb',
+                    background: notification.read ? (theme === 'dark' ? '#1e1e1e' : '#ffffff') : (theme === 'dark' ? '#252526' : '#f3f4f6'),
                     cursor: 'pointer',
                     transition: 'background 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)';
+                    e.currentTarget.style.background = theme === 'dark' ? '#2d2d30' : '#e5e7eb';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = notification.read ?
-                      'transparent' : 'rgba(0, 122, 204, 0.05)';
+                      (theme === 'dark' ? '#1e1e1e' : '#ffffff') : (theme === 'dark' ? '#252526' : '#f3f4f6');
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                     <span
                       style={{
-                        fontSize: '20px',
+                        fontSize: '18px',
                         color: getNotificationColor(notification.type)
                       }}
                     >
@@ -212,10 +257,10 @@ const UnifiedNotificationManager = () => {
                     <div style={{ flex: 1 }}>
                       <div
                         style={{
-                          fontSize: '13px',
-                          fontWeight: notification.read ? 'normal' : 'bold',
-                          color: 'var(--vscode-text-foreground)',
-                          marginBottom: '4px'
+                          fontSize: '12px',
+                          fontWeight: notification.read ? 'normal' : '600',
+                          color: notification.read ? (theme === 'dark' ? '#969696' : '#6b7280') : (theme === 'dark' ? '#cccccc' : '#111827'),
+                          marginBottom: '3px'
                         }}
                       >
                         {notification.message}
@@ -223,9 +268,9 @@ const UnifiedNotificationManager = () => {
                       {notification.details && (
                         <div
                           style={{
-                            fontSize: '12px',
-                            color: 'var(--vscode-text-secondary)',
-                            marginBottom: '4px'
+                            fontSize: '11px',
+                            color: theme === 'dark' ? '#808080' : '#9ca3af',
+                            marginBottom: '3px'
                           }}
                         >
                           {notification.details}
@@ -233,8 +278,8 @@ const UnifiedNotificationManager = () => {
                       )}
                       <div
                         style={{
-                          fontSize: '11px',
-                          color: 'var(--vscode-text-secondary)'
+                          fontSize: '10px',
+                          color: theme === 'dark' ? '#606060' : '#9ca3af'
                         }}
                       >
                         {formatTime(notification.timestamp)}
@@ -267,11 +312,13 @@ const UnifiedNotificationManager = () => {
           {notifications.length > 0 && (
             <div
               style={{
-                padding: '10px 15px',
-                borderTop: '1px solid var(--vscode-panel-border)',
-                fontSize: '12px',
-                color: 'var(--vscode-text-secondary)',
-                textAlign: 'center'
+                padding: '8px 12px',
+                borderTop: '1px solid #3c3c3c',
+                background: '#252526',
+                fontSize: '11px',
+                color: '#808080',
+                textAlign: 'center',
+                borderRadius: '0 0 6px 6px'
               }}
             >
               총 {notifications.length}개 알림 ({unreadCount}개 읽지 않음)
@@ -280,89 +327,12 @@ const UnifiedNotificationManager = () => {
         </div>
       )}
 
-      {/* Toast Notifications */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 10000,
-          display: 'flex',
-          flexDirection: 'column-reverse',
-          gap: '10px',
-          pointerEvents: 'none'
-        }}
-      >
-        {notifications.slice(0, 3).map(notification => (
-          <div
-            key={notification.id}
-            style={{
-              background: 'var(--vscode-editor-background)',
-              border: `2px solid ${getNotificationColor(notification.type)}`,
-              borderRadius: '6px',
-              padding: '12px 15px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              minWidth: '300px',
-              maxWidth: '400px',
-              animation: 'slideIn 0.3s ease',
-              pointerEvents: 'auto'
-            }}
-          >
-            <span style={{ fontSize: '20px' }}>
-              {getNotificationIcon(notification.type)}
-            </span>
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: 'var(--vscode-text-foreground)',
-                  fontWeight: '500'
-                }}
-              >
-                {notification.message}
-              </div>
-              {notification.details && (
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--vscode-text-secondary)',
-                    marginTop: '2px'
-                  }}
-                >
-                  {notification.details}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => removeNotification(notification.id)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--vscode-text-secondary)',
-                cursor: 'pointer',
-                fontSize: '16px',
-                padding: '0'
-              }}
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-
       <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+        @keyframes bellShake {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(10deg); }
+          50% { transform: rotate(-10deg); }
+          75% { transform: rotate(5deg); }
         }
       `}</style>
     </>

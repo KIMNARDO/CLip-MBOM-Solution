@@ -1,51 +1,78 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useBOMData } from '../../contexts/BOMDataContext';
-import UnifiedBOMGrid from '../grid/UnifiedBOMGrid';
+import { TreeGrid } from '../TreeGrid';
+import { Sidebar } from '../Sidebar';
+import { useBOM } from '../../contexts/BOMContext';
 import UnifiedNotificationManager from '../notification/UnifiedNotificationManager';
-import RightSidebar from '../layout/RightSidebar';
+import QuantityDifferenceAnalysis from '../comparison/QuantityDifferenceAnalysis';
+import MBOMAnalyticsDashboard from './MBOMAnalyticsDashboard';
+import { Sun, Moon } from 'lucide-react';
 
 const CompleteMBOMDashboard = () => {
   const { user, logout } = useAuth();
-  const { showSuccess, showError, showInfo, showWarning } = useNotification();
+  const { theme, toggleTheme } = useTheme();
+  const { showSuccess, showError, showInfo, showWarning, notifications } = useNotification();
+
+  // BOMContext에서 가져오기
+  const {
+    selectedId: bomSelectedId,
+    itemsById,
+    setSelected: setBOMSelected,
+    expandedIds,
+    toggleExpanded,
+    expandAll,
+    collapseAll
+  } = useBOM();
+
   const {
     bomData,
     selectedItem,
     changeHistory,
     loading,
+    expandedNodeIds,
+    customColumns,
+    gridApi,
     setSelectedItem,
     setChangeHistory,
+    setGridApi,
     saveBOMData,
     loadBOMData,
     updateBOMItem,
     addBOMItem,
-    deleteBOMItem
+    deleteBOMItem,
+    toggleNodeExpanded,
+    addCustomColumn,
+    removeCustomColumn
   } = useBOMData();
 
   // States
-  const [activeTab, setActiveTab] = useState('structure');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [showChanges, setShowChanges] = useState(false);
   const [showNotificationBanner, setShowNotificationBanner] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [expandedItems, setExpandedItems] = useState(new Set([1, 2, 7, 10, 13]));
   const [selectedTreeItem, setSelectedTreeItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [showAlarmDashboard, setShowAlarmDashboard] = useState(false);
-  const [alarms, setAlarms] = useState([]);
   const [ebomChanges, setEbomChanges] = useState([]);
+  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
+  const [newColumn, setNewColumn] = useState({ headerName: '', field: '', type: 'text' });
+  const [ebomData, setEbomData] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(true);
+  const [activeDropdown, setActiveDropdown] = useState(null);
 
-  // 초기화 시 알람 및 eBOM 변경사항 시뮬레이션
+  // 초기화 시 eBOM 변경사항 시뮬레이션
   useEffect(() => {
-    // 알람 생성
-    const initialAlarms = [
-      { id: 1, type: 'warning', message: 'ENGINE-ASM-001 리드타임 초과 (45일)', time: '10분 전', active: true },
-      { id: 2, type: 'info', message: 'CRK-SFT-001 원가 10% 상승', time: '30분 전', active: true },
-      { id: 3, type: 'error', message: 'VALVE-ASM-001 재고 부족', time: '1시간 전', active: false },
-      { id: 4, type: 'success', message: 'PISTON-001 검증 완료', time: '2시간 전', active: false }
-    ];
-    setAlarms(initialAlarms);
+    // EBOM 데이터 시뮬레이션 (실제로는 API에서 가져옴)
+    const simulatedEBOMData = bomData.map(item => ({
+      ...item,
+      quantity: item.quantity + Math.floor(Math.random() * 3) - 1,
+      cost: item.cost ? item.cost * (1 + (Math.random() * 0.2 - 0.1)) : null,
+      leadtime: item.leadtime ? item.leadtime + Math.floor(Math.random() * 5) - 2 : null
+    }));
+    setEbomData(simulatedEBOMData);
 
     // eBOM 변경사항
     const ebomChangeList = [
@@ -54,60 +81,48 @@ const CompleteMBOMDashboard = () => {
       { id: 3, partNumber: 'NEW-COMP-001', field: 'all', oldValue: null, newValue: '신규 부품', type: 'added' }
     ];
     setEbomChanges(ebomChangeList);
-
-    // 자동 알람 생성 타이머
-    const interval = setInterval(() => {
-      simulateNewAlarm();
-    }, 30000); // 30초마다 새 알람
-
-    return () => clearInterval(interval);
   }, []);
 
-  // 새 알람 시뮬레이션
-  const simulateNewAlarm = () => {
-    const alarmTemplates = [
-      { type: 'warning', message: '재고 수준 경고' },
-      { type: 'info', message: '신규 설계 변경 감지' },
-      { type: 'error', message: '품질 기준 미달' },
-      { type: 'success', message: '검증 프로세스 완료' }
-    ];
 
-    const template = alarmTemplates[Math.floor(Math.random() * alarmTemplates.length)];
-    const newAlarm = {
-      id: Date.now(),
-      type: template.type,
-      message: `${template.message} - ${bomData[Math.floor(Math.random() * bomData.length)]?.partNumber || 'ITEM-001'}`,
-      time: '방금',
-      active: true
-    };
-
-    setAlarms(prev => [newAlarm, ...prev].slice(0, 10)); // 최대 10개 유지
-    showInfo(`새 알람: ${newAlarm.message}`);
-  };
-
-  // 알람 확인
-  const acknowledgeAlarm = (alarmId) => {
-    setAlarms(prev => prev.map(alarm =>
-      alarm.id === alarmId ? { ...alarm, active: false } : alarm
-    ));
-    showSuccess('알람이 확인되었습니다');
-  };
-
-  // 알람 삭제
-  const deleteAlarm = (alarmId) => {
-    setAlarms(prev => prev.filter(alarm => alarm.id !== alarmId));
-    showInfo('알람이 삭제되었습니다');
-  };
-
-  // Toggle tree item expansion
+  // Toggle tree item expansion (synchronized with grid)
   const toggleExpand = (itemId) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
-    } else {
-      newExpanded.add(itemId);
+    const isExpanded = expandedNodeIds.has(itemId);
+    toggleNodeExpanded(itemId, !isExpanded);
+  };
+
+  // Add root BOM item
+  const handleAddRootItem = () => {
+    const rootItem = {
+      partNumber: `ASSY-${Date.now()}`,
+      description: 'New Assembly',
+      quantity: 1,
+      unit: 'EA',
+      level: 0,
+      status: 'draft'
+    };
+    addBOMItem(null, rootItem);
+    showSuccess('루트 BOM 항목이 추가되었습니다');
+  };
+
+  // Delete with confirmation
+  const handleDeleteItem = (item) => {
+    if (window.confirm(`정말로 "${item.partNumber}"를 삭제하시겠습니까?\n하위 항목도 모두 삭제됩니다.`)) {
+      deleteBOMItem(item.id);
+      setSelectedItem(null);
+      showSuccess(`${item.partNumber}가 삭제되었습니다`);
     }
-    setExpandedItems(newExpanded);
+  };
+
+  // Add custom column
+  const handleAddColumn = () => {
+    if (!newColumn.headerName || !newColumn.field) {
+      showWarning('컬럼 이름과 필드 키를 입력하세요');
+      return;
+    }
+    addCustomColumn(newColumn);
+    setNewColumn({ headerName: '', field: '', type: 'text' });
+    setShowAddColumnModal(false);
+    showSuccess(`"${newColumn.headerName}" 컬럼이 추가되었습니다`);
   };
 
   // Filter items based on search and status
@@ -128,7 +143,7 @@ const CompleteMBOMDashboard = () => {
     const filteredItems = filterItems(items);
 
     return filteredItems.map(item => {
-      const isExpanded = expandedItems.has(item.id);
+      const isExpanded = expandedNodeIds.has(item.id);
       const hasChildren = item.children && item.children.length > 0;
       const isSelected = selectedTreeItem?.id === item.id;
 
@@ -157,7 +172,35 @@ const CompleteMBOMDashboard = () => {
               {!hasChildren && <span className="tree-expand"></span>}
               <span className="tree-icon">{item.icon || (level === 0 ? '📦' : level === 1 ? '🔧' : '⚙️')}</span>
               <span className="tree-label">{item.partNumber}</span>
-              <span className="tree-badge" style={{ background: '#007acc' }}>L{item.level}</span>
+              <span
+                className="tree-badge"
+                style={{
+                  background: item.level === 0 ? (theme === 'dark' ? 'rgba(102, 126, 234, 0.15)' : 'rgba(102, 126, 234, 0.08)') :
+                             item.level === 1 ? (theme === 'dark' ? 'rgba(245, 87, 108, 0.15)' : 'rgba(245, 87, 108, 0.08)') :
+                             item.level === 2 ? (theme === 'dark' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(79, 172, 254, 0.08)') :
+                             item.level === 3 ? (theme === 'dark' ? 'rgba(56, 249, 215, 0.15)' : 'rgba(67, 233, 123, 0.08)') :
+                             item.level === 4 ? (theme === 'dark' ? 'rgba(254, 225, 64, 0.15)' : 'rgba(250, 112, 154, 0.08)') :
+                                               (theme === 'dark' ? 'rgba(168, 237, 234, 0.15)' : 'rgba(224, 224, 224, 0.3)'),
+                  border: item.level === 0 ? '1px solid #667eea' :
+                          item.level === 1 ? '1px solid #f5576c' :
+                          item.level === 2 ? (theme === 'dark' ? '1px solid #00f2fe' : '1px solid #4facfe') :
+                          item.level === 3 ? (theme === 'dark' ? '1px solid #38f9d7' : '1px solid #43e97b') :
+                          item.level === 4 ? (theme === 'dark' ? '1px solid #fee140' : '1px solid #fa709a') :
+                                            (theme === 'dark' ? '1px solid #a8edea' : '1px solid #d0d0d0'),
+                  color: item.level === 0 ? '#667eea' :
+                         item.level === 1 ? '#f5576c' :
+                         item.level === 2 ? (theme === 'dark' ? '#00f2fe' : '#4facfe') :
+                         item.level === 3 ? (theme === 'dark' ? '#38f9d7' : '#43e97b') :
+                         item.level === 4 ? (theme === 'dark' ? '#fee140' : '#fa709a') :
+                                           (theme === 'dark' ? '#a8edea' : '#666666'),
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                L{item.level}
+              </span>
               {item.changed && <span className="tree-badge" style={{ background: '#e74c3c' }}>M</span>}
             </div>
           </div>
@@ -216,6 +259,7 @@ const CompleteMBOMDashboard = () => {
     }, 2000);
   };
 
+
   const handleImportData = () => {
     showInfo('데이터 가져오기 대화상자 열기...');
   };
@@ -228,6 +272,88 @@ const CompleteMBOMDashboard = () => {
     } else {
       showError('저장 실패');
     }
+  };
+
+  // 드롭다운 메뉴 표시
+  const showDropdown = (e, menu) => {
+    setActiveDropdown(menu);
+  };
+
+  // 메뉴 기능 핸들러들
+  const handleNewFile = () => {
+    if (confirm('새 BOM 파일을 생성하시겠습니까? 현재 작업을 저장해주세요.')) {
+      // BOM 데이터 초기화
+      loadBOMData();
+      setChangeHistory([]);
+      showSuccess('새 BOM 파일이 생성되었습니다');
+    }
+  };
+
+  const handleOpenFile = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.xlsx,.csv';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        showInfo(`${file.name} 파일을 여는 중...`);
+        // TODO: 파일 읽기 구현
+      }
+    };
+    input.click();
+  };
+
+  const handleUndo = () => {
+    showInfo('실행 취소');
+    // TODO: Undo 기능 구현
+  };
+
+  const handleRedo = () => {
+    showInfo('다시 실행');
+    // TODO: Redo 기능 구현
+  };
+
+  const handleCut = () => {
+    showInfo('잘라내기');
+    // TODO: Cut 기능 구현
+  };
+
+  const handleCopy = () => {
+    showInfo('복사');
+    // TODO: Copy 기능 구현
+  };
+
+  const handlePaste = () => {
+    showInfo('붙여넣기');
+    // TODO: Paste 기능 구현
+  };
+
+  const handleFind = () => {
+    const searchInput = document.querySelector('.vscode-input');
+    if (searchInput) {
+      searchInput.focus();
+    }
+  };
+
+  const handleReplace = () => {
+    showInfo('바꾸기 기능');
+    // TODO: Replace 기능 구현
+  };
+
+  const handleToggleSidebar = () => {
+    const sidebar = document.querySelector('.vscode-sidebar');
+    if (sidebar) {
+      sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+    }
+  };
+
+  const handleSettings = () => {
+    showInfo('설정 페이지');
+    // TODO: Settings 페이지 구현
+  };
+
+  const handleAbout = () => {
+    alert('M-BOM Management System\nVersion 1.0.0\n\n© 2024 FabsNet EPL System');
   };
 
   // 키보드 단축키
@@ -269,9 +395,26 @@ const CompleteMBOMDashboard = () => {
 
   // Debug logging
   useEffect(() => {
-    console.log('CompleteMBOMDashboard - bomData:', bomData);
-    console.log('CompleteMBOMDashboard - loading:', loading);
-  }, [bomData, loading]);
+    console.log('=== CompleteMBOMDashboard Debug Info ===');
+    console.log('bomData:', bomData);
+    console.log('bomData type:', typeof bomData);
+    console.log('bomData length:', bomData ? bomData.length : 'null/undefined');
+    console.log('loading:', loading);
+    console.log('activeTab:', activeTab);
+    
+    if (bomData && bomData.length > 0) {
+      console.log('First item:', bomData[0]);
+      console.log('Sample structure:', {
+        id: bomData[0].id,
+        partNumber: bomData[0].partNumber,
+        hasChildren: bomData[0].hasChildren,
+        children: bomData[0].children?.length || 0
+      });
+    } else {
+      console.warn('⚠️ No BOM data available!');
+    }
+    console.log('=====================================');
+  }, [bomData, loading, activeTab]);
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -305,7 +448,37 @@ const CompleteMBOMDashboard = () => {
       {/* VS Code Title Bar */}
       <div className="vscode-titlebar">
         <div className="vscode-title">M-BOM Management System - Enterprise Edition</div>
-        <div className="window-controls">
+        <div className="window-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            style={{
+              background: theme === 'dark' ? '#3c3c3c' : '#f3f4f6',
+              border: `1px solid ${theme === 'dark' ? '#555' : '#d1d5db'}`,
+              borderRadius: '4px',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginRight: '10px'
+            }}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = theme === 'dark' ? '#4a4a4a' : '#e5e7eb';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = theme === 'dark' ? '#3c3c3c' : '#f3f4f6';
+            }}
+          >
+            {theme === 'dark' ? (
+              <Sun style={{ width: 16, height: 16, color: '#fbbf24' }} />
+            ) : (
+              <Moon style={{ width: 16, height: 16, color: '#6366f1' }} />
+            )}
+          </button>
           <span className="control-btn minimize"></span>
           <span className="control-btn maximize"></span>
           <span className="control-btn close" onClick={logout}></span>
@@ -314,89 +487,87 @@ const CompleteMBOMDashboard = () => {
 
       {/* VS Code Menu Bar */}
       <div className="vscode-menubar">
-        <div className="menu-item">파일</div>
-        <div className="menu-item">편집</div>
-        <div className="menu-item">보기</div>
+        <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'file')}>
+          파일
+        </div>
+        <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'edit')}>
+          편집
+        </div>
+        <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'view')}>
+          보기
+        </div>
         <div className="menu-item active" onClick={() => setShowChanges(!showChanges)}>
           변경사항 {changeHistory.length > 0 && `(${changeHistory.length})`}
         </div>
-        <div className="menu-item" onClick={() => setShowAlarmDashboard(!showAlarmDashboard)}>
-          알람 {alarms.filter(a => a.active).length > 0 && `(${alarms.filter(a => a.active).length})`}
-        </div>
         <div className="menu-item" onClick={handleExportExcel}>내보내기</div>
         <div className="menu-item" onClick={handleImportData}>가져오기</div>
-        <div className="menu-item">도구</div>
-        <div className="menu-item">도움말</div>
+        <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'tools')}>
+          도구
+        </div>
+        <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'help')}>
+          도움말
+        </div>
       </div>
 
-      {/* Alarm Dashboard */}
-      {showAlarmDashboard && (
-        <div className="changes-dashboard show" style={{ background: '#2d2d30', padding: '15px' }}>
-          <div className="dashboard-header">
-            <div className="dashboard-title">
-              🚨 알람 센터: {alarms.filter(a => a.active).length}개 활성 알람
-            </div>
-            <div className="dashboard-actions">
-              <button className="vscode-button" onClick={() => setAlarms(prev => prev.map(a => ({ ...a, active: false })))}>
-                모두 확인
-              </button>
-              <button className="vscode-button secondary" onClick={() => setAlarms([])}>
-                모두 삭제
-              </button>
-            </div>
-          </div>
-          <div className="alarms-list" style={{ marginTop: '15px', maxHeight: '200px', overflow: 'auto' }}>
-            {alarms.map(alarm => (
-              <div key={alarm.id} className={`alarm-item ${alarm.type}`} style={{
-                padding: '10px',
-                marginBottom: '8px',
-                background: alarm.active ? '#3c3c3c' : '#252526',
-                borderLeft: `4px solid ${
-                  alarm.type === 'error' ? '#e74c3c' :
-                  alarm.type === 'warning' ? '#f39c12' :
-                  alarm.type === 'success' ? '#27ae60' : '#3498db'
-                }`,
-                borderRadius: '4px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span>{
-                    alarm.type === 'error' ? '❌' :
-                    alarm.type === 'warning' ? '⚠️' :
-                    alarm.type === 'success' ? '✅' : 'ℹ️'
-                  }</span>
-                  <span style={{ color: alarm.active ? '#ffffff' : '#969696' }}>{alarm.message}</span>
-                  <span style={{ fontSize: '11px', color: '#969696' }}>{alarm.time}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '5px' }}>
-                  {alarm.active && (
-                    <button
-                      className="vscode-button"
-                      style={{ padding: '2px 8px', fontSize: '11px' }}
-                      onClick={() => acknowledgeAlarm(alarm.id)}
-                    >
-                      확인
-                    </button>
-                  )}
-                  <button
-                    className="vscode-button secondary"
-                    style={{ padding: '2px 8px', fontSize: '11px' }}
-                    onClick={() => deleteAlarm(alarm.id)}
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Dropdown Menus */}
+      {activeDropdown === 'file' && (
+        <div className="dropdown-menu" style={{ top: '56px', left: '0' }} onMouseLeave={() => setActiveDropdown(null)}>
+          <div className="menu-dropdown-item" onClick={handleNewFile}>새 파일</div>
+          <div className="menu-dropdown-item" onClick={handleOpenFile}>열기...</div>
+          <div className="menu-dropdown-item" onClick={handleSave}>저장</div>
+          <div className="menu-dropdown-item" onClick={handleExportExcel}>다른 이름으로 저장...</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={logout}>종료</div>
         </div>
       )}
 
+      {activeDropdown === 'edit' && (
+        <div className="dropdown-menu" style={{ top: '56px', left: '40px' }} onMouseLeave={() => setActiveDropdown(null)}>
+          <div className="menu-dropdown-item" onClick={handleUndo}>실행 취소</div>
+          <div className="menu-dropdown-item" onClick={handleRedo}>다시 실행</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={handleCut}>잘라내기</div>
+          <div className="menu-dropdown-item" onClick={handleCopy}>복사</div>
+          <div className="menu-dropdown-item" onClick={handlePaste}>붙여넣기</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={handleFind}>찾기</div>
+          <div className="menu-dropdown-item" onClick={handleReplace}>바꾸기</div>
+        </div>
+      )}
+
+      {activeDropdown === 'view' && (
+        <div className="dropdown-menu" style={{ top: '56px', left: '80px' }} onMouseLeave={() => setActiveDropdown(null)}>
+          <div className="menu-dropdown-item" onClick={handleToggleSidebar}>사이드바 토글</div>
+          <div className="menu-dropdown-item" onClick={() => setShowDashboard(!showDashboard)}>대시보드 토글</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={() => expandAll()}>모두 펼치기</div>
+          <div className="menu-dropdown-item" onClick={() => collapseAll()}>모두 접기</div>
+        </div>
+      )}
+
+      {activeDropdown === 'tools' && (
+        <div className="dropdown-menu" style={{ top: '56px', right: '100px' }} onMouseLeave={() => setActiveDropdown(null)}>
+          <div className="menu-dropdown-item" onClick={handleSettings}>설정</div>
+          <div className="menu-dropdown-item" onClick={() => setShowAddColumnModal(true)}>컬럼 관리</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={() => showInfo('BOM 검증 중...')}>BOM 검증</div>
+          <div className="menu-dropdown-item" onClick={() => showInfo('비용 계산 중...')}>비용 계산</div>
+        </div>
+      )}
+
+      {activeDropdown === 'help' && (
+        <div className="dropdown-menu" style={{ top: '56px', right: '20px' }} onMouseLeave={() => setActiveDropdown(null)}>
+          <div className="menu-dropdown-item" onClick={() => window.open('https://docs.fabsnet.com', '_blank')}>온라인 도움말</div>
+          <div className="menu-dropdown-item" onClick={() => showInfo('키보드 단축키 안내')}>키보드 단축키</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={handleAbout}>정보</div>
+        </div>
+      )}
+
+
       {/* Changes Dashboard */}
       {showChanges && (
-        <div className="changes-dashboard show" style={{ background: '#2d2d30', padding: '15px' }}>
+        <div className="changes-dashboard show">
           <div className="dashboard-header">
             <div className="dashboard-title">
               ⚠️ 미저장 변경사항: {changeHistory.length}개 항목
@@ -411,20 +582,12 @@ const CompleteMBOMDashboard = () => {
           </div>
           <div className="changes-list" style={{ marginTop: '10px', maxHeight: '150px', overflow: 'auto' }}>
             {changeHistory.map(change => (
-              <div key={change.id} className="change-item" style={{
-                padding: '8px',
-                marginBottom: '5px',
-                background: '#1e1e1e',
-                borderRadius: '3px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
+              <div key={change.id} className="change-item">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input type="checkbox" defaultChecked />
                   <span className="change-icon">✏️</span>
                   <span className="change-part" style={{ color: '#9cdcfe' }}>{change.partNumber}</span>
-                  <span className="change-details" style={{ color: '#969696' }}>
+                  <span className="change-details" style={{ color: theme === 'dark' ? '#969696' : '#6b7280' }}>
                     {change.field}: {change.oldValue} → {change.newValue}
                   </span>
                 </div>
@@ -444,7 +607,7 @@ const CompleteMBOMDashboard = () => {
       )}
 
       {/* Main Layout */}
-      <div className="vscode-layout" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="vscode-layout">
         {/* Sidebar - Tree View */}
         <div className="vscode-sidebar">
           <div className="vscode-sidebar-header">
@@ -455,7 +618,7 @@ const CompleteMBOMDashboard = () => {
           </div>
 
           {/* Search and Filter */}
-          <div style={{ padding: '10px', borderBottom: '1px solid #3e3e42' }}>
+          <div className="sidebar-search-container" style={{ padding: '10px' }}>
             <input
               type="text"
               className="vscode-input"
@@ -480,15 +643,15 @@ const CompleteMBOMDashboard = () => {
 
           <div className="tree-container">
             {loading ? (
-              <div style={{ padding: '20px', color: '#969696' }}>로딩중...</div>
+              <div style={{ padding: '20px', color: theme === 'dark' ? '#969696' : '#6b7280' }}>로딩중...</div>
             ) : (
-              renderTreeItems(bomData)
+              <Sidebar searchTerm={searchTerm} />
             )}
           </div>
         </div>
 
         {/* Main Content Area */}
-        <div className="vscode-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="vscode-content">
           {/* Tabs */}
           <div className="vscode-tabs">
             <div
@@ -516,6 +679,12 @@ const CompleteMBOMDashboard = () => {
               🔍 E-BOM vs M-BOM
             </div>
             <div
+              className={`tab-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              📊 Dashboard
+            </div>
+            <div
               className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
             >
@@ -524,45 +693,345 @@ const CompleteMBOMDashboard = () => {
           </div>
 
           {/* Tab Content */}
-          <div style={{ flex: 1, overflow: 'hidden', padding: '10px' }}>
+          <div className="tab-content">
             {activeTab === 'structure' && (
               <div style={{ height: '100%', width: '100%', display: 'flex' }}>
                 {/* BOM Table Grid */}
-                <div style={{ flex: 1, marginRight: '10px' }}>
-                  <UnifiedBOMGrid
-                    data={bomData}
-                    onSelectionChanged={(selected) => {
-                      if (selected.length > 0) {
-                        setSelectedItem(selected[0]);
-                      }
-                    }}
-                  />
+                <div style={{ flex: 1, marginRight: '10px', height: '100%', overflow: 'hidden' }}>
+                  {/* 데이터 상태 디버깅 정보 */}
+                  <div style={{
+                    background: theme === 'dark' ? '#2d2d30' : '#f3f4f6',
+                    padding: '10px',
+                    marginBottom: '10px',
+                    borderRadius: '4px',
+                    color: theme === 'dark' ? '#cccccc' : '#111827',
+                    fontSize: '12px'
+                  }}>
+                    <strong>데이터 상태:</strong> 
+                    {loading ? ' 로딩 중...' : ` 로드 완료 (${bomData.length}개 항목)`}
+                    {bomData.length > 0 && (
+                      <div style={{ marginTop: '5px' }}>
+                        첫 번째 항목: {bomData[0].partNumber} - {bomData[0].description}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 메인 BOM 데이터 그리드 - Custom TreeGrid 사용 */}
+                  <TreeGrid searchTerm={searchTerm} />
                 </div>
-                {/* Right Sidebar */}
-                <RightSidebar />
+              </div>
+            )}
+
+            {activeTab === 'changes' && (
+              <div style={{ height: '100%', width: '100%', padding: '20px', overflow: 'auto' }}>
+                <div style={{ marginBottom: '20px' }}>
+                  <h2 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '10px' }}>📝 변경 이력</h2>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <button
+                      className="vscode-button"
+                      onClick={() => {
+                        const confirmed = window.confirm(`${changeHistory.length}개의 변경사항을 저장하시겠습니까?`);
+                        if (confirmed) {
+                          saveBOMData();
+                          setChangeHistory([]);
+                          showSuccess('변경사항이 저장되었습니다');
+                        }
+                      }}
+                    >
+                      💾 모두 저장
+                    </button>
+                    <button
+                      className="vscode-button secondary"
+                      onClick={() => {
+                        const confirmed = window.confirm('모든 변경사항을 취소하시겠습니까?');
+                        if (confirmed) {
+                          setChangeHistory([]);
+                          showWarning('변경사항이 취소되었습니다');
+                        }
+                      }}
+                    >
+                      ❌ 모두 취소
+                    </button>
+                    <button className="vscode-button secondary">
+                      📥 Export Excel
+                    </button>
+                  </div>
+                </div>
+
+                {/* 변경 이력 테이블 */}
+                <div style={{ background: theme === 'dark' ? '#1e1e1e' : '#ffffff', borderRadius: '6px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: theme === 'dark' ? '#2d2d30' : '#f3f4f6' }}>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>선택</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>시간</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>품번</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>필드</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>이전 값</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>새 값</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>사용자</th>
+                        <th style={{ padding: '10px', textAlign: 'left', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>상태</th>
+                        <th style={{ padding: '10px', textAlign: 'center', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#cccccc' : '#111827' }}>작업</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {changeHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan="9" style={{ padding: '40px', textAlign: 'center', color: theme === 'dark' ? '#969696' : '#6b7280' }}>
+                            변경 이력이 없습니다
+                          </td>
+                        </tr>
+                      ) : (
+                        changeHistory.map((change, index) => (
+                          <tr key={change.id || index} style={{ borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '10px' }}>
+                              <input type="checkbox" defaultChecked />
+                            </td>
+                            <td style={{ padding: '10px', color: theme === 'dark' ? '#cccccc' : '#111827', fontSize: '12px' }}>
+                              {new Date(change.timestamp || Date.now()).toLocaleString()}
+                            </td>
+                            <td style={{ padding: '10px', color: '#9cdcfe' }}>
+                              {change.partNumber}
+                            </td>
+                            <td style={{ padding: '10px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
+                              {change.field}
+                            </td>
+                            <td style={{ padding: '10px', color: '#f48771' }}>
+                              {change.oldValue}
+                            </td>
+                            <td style={{ padding: '10px', color: '#b5cea8' }}>
+                              {change.newValue}
+                            </td>
+                            <td style={{ padding: '10px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
+                              {change.user || user?.name || 'User'}
+                            </td>
+                            <td style={{ padding: '10px' }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                background: change.status === 'approved' ? '#27ae60' :
+                                          change.status === 'pending' ? '#f39c12' : '#3498db',
+                                color: 'white'
+                              }}>
+                                {change.status === 'approved' ? '승인' :
+                                 change.status === 'pending' ? '대기' : '검토'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                              <button
+                                className="vscode-button"
+                                style={{ padding: '2px 8px', fontSize: '11px', marginRight: '5px' }}
+                                onClick={() => {
+                                  // 변경사항 되돌리기
+                                  showInfo(`변경사항 되돌리기: ${change.partNumber}`);
+                                }}
+                              >
+                                ↩️
+                              </button>
+                              <button
+                                className="vscode-button secondary"
+                                style={{ padding: '2px 8px', fontSize: '11px' }}
+                                onClick={() => {
+                                  setChangeHistory(prev => prev.filter(c => c.id !== change.id));
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* EBOM 변경사항 섹션 */}
+                {ebomChanges.length > 0 && (
+                  <div style={{ marginTop: '30px' }}>
+                    <h3 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '15px' }}>⚠️ EBOM 변경사항</h3>
+                    <div style={{ background: theme === 'dark' ? '#1e1e1e' : '#ffffff', borderRadius: '6px', padding: '15px' }}>
+                      {ebomChanges.map((change, index) => (
+                        <div key={index} style={{
+                          padding: '10px',
+                          marginBottom: '10px',
+                          background: '#2d2d30',
+                          borderLeft: `3px solid ${
+                            change.type === 'added' ? '#27ae60' :
+                            change.type === 'deleted' ? '#e74c3c' :
+                            change.type === 'modified' ? '#f39c12' : '#3498db'
+                          }`,
+                          borderRadius: '4px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <span style={{ color: '#9cdcfe', marginRight: '10px' }}>{change.partNumber}</span>
+                              <span style={{ color: theme === 'dark' ? '#969696' : '#6b7280' }}>
+                                {change.field}: {change.oldValue} → {change.newValue}
+                              </span>
+                            </div>
+                            <button
+                              className="vscode-button"
+                              style={{ padding: '2px 10px', fontSize: '11px' }}
+                              onClick={() => {
+                                // EBOM 변경사항 적용
+                                showSuccess('EBOM 변경사항이 적용되었습니다');
+                                setEbomChanges(prev => prev.filter((_, i) => i !== index));
+                              }}
+                            >
+                              적용
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'analysis' && (
               <div style={{ height: '100%', width: '100%', display: 'flex' }}>
                 <div style={{ flex: 1, padding: '20px', overflow: 'auto' }}>
-                  <div style={{ textAlign: 'center', color: '#8b8b8b', paddingTop: '50px' }}>
-                    <h3>분석 대시보드</h3>
-                    <p>오른쪽 사이드바에서 분석 데이터를 확인하세요</p>
+                  <h2 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '20px' }}>📈 BOM 분석 대시보드</h2>
+
+                  {/* KPI 카드 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '30px' }}>
+                    <div style={{ background: theme === 'dark' ? '#2d2d30' : '#f3f4f6', padding: '20px', borderRadius: '6px', borderLeft: '3px solid #007acc' }}>
+                      <div style={{ fontSize: '12px', color: theme === 'dark' ? '#969696' : '#6b7280', marginBottom: '5px' }}>총 부품 수</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: theme === 'dark' ? '#4fc3f7' : '#0ea5e9' }}>{bomData.length}</div>
+                    </div>
+                    <div style={{ background: theme === 'dark' ? '#2d2d30' : '#f3f4f6', padding: '20px', borderRadius: '6px', borderLeft: '3px solid #27ae60' }}>
+                      <div style={{ fontSize: '12px', color: theme === 'dark' ? '#969696' : '#6b7280', marginBottom: '5px' }}>승인 완료</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
+                        {bomData.filter(item => item.status === 'approved').length}
+                      </div>
+                    </div>
+                    <div style={{ background: theme === 'dark' ? '#2d2d30' : '#f3f4f6', padding: '20px', borderRadius: '6px', borderLeft: '3px solid #f39c12' }}>
+                      <div style={{ fontSize: '12px', color: theme === 'dark' ? '#969696' : '#6b7280', marginBottom: '5px' }}>검토 중</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f39c12' }}>
+                        {bomData.filter(item => item.status === 'review').length}
+                      </div>
+                    </div>
+                    <div style={{ background: theme === 'dark' ? '#2d2d30' : '#f3f4f6', padding: '20px', borderRadius: '6px', borderLeft: '3px solid #e74c3c' }}>
+                      <div style={{ fontSize: '12px', color: theme === 'dark' ? '#969696' : '#6b7280', marginBottom: '5px' }}>미완성</div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#e74c3c' }}>
+                        {bomData.filter(item => item.status === 'draft').length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 통계 섹션 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    {/* 레벨별 분포 */}
+                    <div style={{ background: theme === 'dark' ? '#1e1e1e' : '#ffffff', padding: '20px', borderRadius: '6px' }}>
+                      <h3 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '15px' }}>레벨별 부품 분포</h3>
+                      <div style={{ space: '10px' }}>
+                        {[0, 1, 2, 3].map(level => {
+                          const count = bomData.filter(item => item.level === level).length;
+                          const percentage = bomData.length > 0 ? (count / bomData.length * 100).toFixed(1) : 0;
+                          return (
+                            <div key={level} style={{ marginBottom: '15px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <span style={{ color: theme === 'dark' ? '#cccccc' : '#111827' }}>Level {level}</span>
+                                <span style={{ color: theme === 'dark' ? '#969696' : '#6b7280' }}>{count}개 ({percentage}%)</span>
+                              </div>
+                              <div style={{ background: theme === 'dark' ? '#3c3c3c' : '#e5e7eb', height: '20px', borderRadius: '10px', overflow: 'hidden' }}>
+                                <div style={{
+                                  background: level === 0 ? '#007acc' : level === 1 ? '#27ae60' : level === 2 ? '#f39c12' : '#e74c3c',
+                                  height: '100%',
+                                  width: `${percentage}%`,
+                                  transition: 'width 0.3s'
+                                }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 공급업체별 분포 */}
+                    <div style={{ background: theme === 'dark' ? '#1e1e1e' : '#ffffff', padding: '20px', borderRadius: '6px' }}>
+                      <h3 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '15px' }}>주요 공급업체</h3>
+                      <table style={{ width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>공급업체</th>
+                            <th style={{ textAlign: 'right', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>부품 수</th>
+                            <th style={{ textAlign: 'right', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>비율</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {['현대파워텍', '현대위아', '만도', '삼성정밀'].map(supplier => {
+                            const count = bomData.filter(item => item.supplier === supplier).length;
+                            const percentage = bomData.length > 0 ? (count / bomData.length * 100).toFixed(1) : 0;
+                            return (
+                              <tr key={supplier}>
+                                <td style={{ padding: '8px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>{supplier}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', color: theme === 'dark' ? '#4fc3f7' : '#0ea5e9' }}>{count}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', color: theme === 'dark' ? '#969696' : '#6b7280' }}>{percentage}%</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 리드타임 분석 */}
+                  <div style={{ background: theme === 'dark' ? '#1e1e1e' : '#ffffff', padding: '20px', borderRadius: '6px', marginTop: '20px' }}>
+                    <h3 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '15px' }}>리드타임 경고 항목</h3>
+                    <table style={{ width: '100%' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>품번</th>
+                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>품명</th>
+                          <th style={{ textAlign: 'right', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>리드타임</th>
+                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb', color: theme === 'dark' ? '#969696' : '#6b7280' }}>공급업체</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bomData
+                          .filter(item => (item.leadtime || item.leadTime) > 30)
+                          .sort((a, b) => (b.leadtime || b.leadTime || 0) - (a.leadtime || a.leadTime || 0))
+                          .slice(0, 5)
+                          .map(item => (
+                            <tr key={item.id}>
+                              <td style={{ padding: '8px', color: '#9cdcfe' }}>{item.partNumber}</td>
+                              <td style={{ padding: '8px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>{item.description}</td>
+                              <td style={{ padding: '8px', textAlign: 'right', color: '#e74c3c', fontWeight: 'bold' }}>
+                                {item.leadtime || item.leadTime}일
+                              </td>
+                              <td style={{ padding: '8px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>{item.supplier || '-'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <RightSidebar />
+              </div>
+            )}
+
+            {activeTab === 'comparison' && (
+              <div style={{ height: '100%', width: '100%' }}>
+                <QuantityDifferenceAnalysis />
+              </div>
+            )}
+
+            {activeTab === 'dashboard' && (
+              <div style={{ height: '100%', width: '100%' }}>
+                <MBOMAnalyticsDashboard />
               </div>
             )}
 
             {activeTab === 'settings' && (
               <div style={{ height: '100%', width: '100%', display: 'flex' }}>
-                <div style={{ flex: 1, padding: '20px', overflow: 'auto', color: '#cccccc' }}>
+                <div style={{ flex: 1, padding: '20px', overflow: 'auto', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
                   <h2>시스템 설정</h2>
 
                   <div style={{ marginTop: '20px' }}>
                     <h3>알림 설정</h3>
-                    <div style={{ background: '#252526', padding: '15px', borderRadius: '6px' }}>
+                    <div style={{ background: theme === 'dark' ? '#252526' : '#f9fafb', padding: '15px', borderRadius: '6px' }}>
                       <label style={{ display: 'block', marginBottom: '10px' }}>
                         <input type="checkbox" defaultChecked /> eBOM 변경 알림
                       </label>
@@ -580,7 +1049,7 @@ const CompleteMBOMDashboard = () => {
 
                   <div style={{ marginTop: '20px' }}>
                     <h3>동기화 설정</h3>
-                    <div style={{ background: '#252526', padding: '15px', borderRadius: '6px' }}>
+                    <div style={{ background: theme === 'dark' ? '#252526' : '#f9fafb', padding: '15px', borderRadius: '6px' }}>
                       <div style={{ marginBottom: '10px' }}>
                         <label>동기화 간격</label>
                         <select className="vscode-input" style={{ marginLeft: '10px', width: '200px' }}>
@@ -597,7 +1066,7 @@ const CompleteMBOMDashboard = () => {
 
                   <div style={{ marginTop: '20px' }}>
                     <h3>표시 설정</h3>
-                    <div style={{ background: '#252526', padding: '15px', borderRadius: '6px' }}>
+                    <div style={{ background: theme === 'dark' ? '#252526' : '#f9fafb', padding: '15px', borderRadius: '6px' }}>
                       <label style={{ display: 'block', marginBottom: '10px' }}>
                         <input type="checkbox" defaultChecked /> 트리 자동 확장
                       </label>
@@ -610,92 +1079,11 @@ const CompleteMBOMDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <RightSidebar />
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Panel - Properties */}
-        {selectedItem && (
-          <div className="vscode-panel">
-            <div className="panel-header">
-              속성: {selectedItem.partNumber}
-            </div>
-            <div className="panel-content">
-              <div className="property-group">
-                <div className="property-group-title">기본 정보</div>
-                <div className="property-item">
-                  <span className="property-label">품번:</span>
-                  <span className="property-value">{selectedItem.partNumber}</span>
-                </div>
-                <div className="property-item">
-                  <span className="property-label">품명:</span>
-                  <span className="property-value">{selectedItem.description}</span>
-                </div>
-                <div className="property-item">
-                  <span className="property-label">레벨:</span>
-                  <span className="property-value">Level {selectedItem.level}</span>
-                </div>
-                <div className="property-item">
-                  <span className="property-label">수량:</span>
-                  <span className="property-value">{selectedItem.quantity} {selectedItem.unit}</span>
-                </div>
-              </div>
-
-              <div className="property-group">
-                <div className="property-group-title">생산 정보</div>
-                <div className="property-item">
-                  <span className="property-label">작업:</span>
-                  <span className="property-value">{selectedItem.operation || '-'}</span>
-                </div>
-                <div className="property-item">
-                  <span className="property-label">작업장:</span>
-                  <span className="property-value">{selectedItem.workcenter || '-'}</span>
-                </div>
-                <div className="property-item">
-                  <span className="property-label">공급업체:</span>
-                  <span className="property-value">{selectedItem.supplier || '-'}</span>
-                </div>
-                <div className="property-item">
-                  <span className="property-label">리드타임:</span>
-                  <span className="property-value" style={{
-                    color: (selectedItem.leadtime || 0) > 30 ? '#e74c3c' : '#cccccc',
-                    fontWeight: (selectedItem.leadtime || 0) > 30 ? 'bold' : 'normal'
-                  }}>
-                    {selectedItem.leadtime || 0}일
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button className="vscode-button" style={{ width: '100%' }}>
-                  편집
-                </button>
-                <button className="vscode-button secondary" style={{ width: '100%' }}>
-                  복사
-                </button>
-                <button className="vscode-button secondary" style={{ width: '100%' }}>
-                  이력 보기
-                </button>
-                <button
-                  className="vscode-button secondary"
-                  style={{ width: '100%', background: '#e74c3c' }}
-                  onClick={() => {
-                    if (confirm(`${selectedItem.partNumber}를 삭제하시겠습니까?`)) {
-                      deleteBOMItem(selectedItem.id);
-                      setSelectedItem(null);
-                      showSuccess('항목이 삭제되었습니다');
-                    }
-                  }}
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Status Bar */}
@@ -710,7 +1098,20 @@ const CompleteMBOMDashboard = () => {
           <span>💾 {changeHistory.length} changes</span>
         </div>
         <div className="status-item">
-          <span>🔔 {alarms.filter(a => a.active).length} alarms</span>
+          <span
+            className={notifications && notifications.filter(n => !n.read).length > 0 ? 'animate-strong-blink' : ''}
+            style={{
+              color: notifications && notifications.filter(n => !n.read).length > 0 ? '#ffcc00' : '#ffffff',
+              fontWeight: notifications && notifications.filter(n => !n.read).length > 0 ? 'bold' : 'normal',
+              padding: '0 4px',
+              borderRadius: '3px',
+              backgroundColor: notifications && notifications.filter(n => !n.read).length > 0 ? 'rgba(255, 204, 0, 0.2)' : 'transparent'
+            }}
+          >
+            🔔 {notifications && notifications.filter(n => !n.read).length > 0 ? (
+              <strong style={{ color: '#ff6b6b' }}>{notifications.filter(n => !n.read).length}</strong>
+            ) : '0'} 알림
+          </span>
         </div>
         <div className="status-item">
           <span>⚠️ eBOM: {ebomChanges.length} changes</span>
@@ -723,6 +1124,87 @@ const CompleteMBOMDashboard = () => {
         </div>
       </div>
 
+      {/* Modal for Add Column */}
+      {showAddColumnModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ width: '400px' }}>
+            <div className="modal-header">
+              <div className="modal-title">
+                새 컬럼 추가
+              </div>
+              <button
+                className="modal-close-btn"
+                onClick={() => setShowAddColumnModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: '#cccccc' }}>
+                  컬럼 이름
+                </label>
+                <input
+                  type="text"
+                  className="vscode-input"
+                  value={newColumn.headerName}
+                  onChange={(e) => setNewColumn({ ...newColumn, headerName: e.target.value })}
+                  placeholder="예: 공급업체"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: '#cccccc' }}>
+                  필드 키
+                </label>
+                <input
+                  type="text"
+                  className="vscode-input"
+                  value={newColumn.field}
+                  onChange={(e) => setNewColumn({ ...newColumn, field: e.target.value })}
+                  placeholder="예: supplier"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: '#cccccc' }}>
+                  데이터 타입
+                </label>
+                <select
+                  className="vscode-input"
+                  value={newColumn.type}
+                  onChange={(e) => setNewColumn({ ...newColumn, type: e.target.value })}
+                  style={{ width: '100%' }}
+                >
+                  <option value="text">텍스트</option>
+                  <option value="number">숫자</option>
+                  <option value="date">날짜</option>
+                  <option value="boolean">예/아니오</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{
+              padding: '20px',
+              borderTop: theme === 'dark' ? '1px solid #3e3e42' : '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}>
+              <button className="vscode-button secondary" onClick={() => setShowAddColumnModal(false)}>
+                취소
+              </button>
+              <button className="vscode-button" onClick={handleAddColumn}>
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal for eBOM Changes */}
       {showModal && (
         <div className="modal-overlay show" style={{
@@ -731,14 +1213,14 @@ const CompleteMBOMDashboard = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
+          background: theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000
         }}>
           <div className="modal" style={{
-            background: '#2d2d30',
+            background: theme === 'dark' ? '#2d2d30' : '#ffffff',
             borderRadius: '8px',
             width: '600px',
             maxHeight: '80vh',
@@ -747,34 +1229,34 @@ const CompleteMBOMDashboard = () => {
           }}>
             <div className="modal-header" style={{
               padding: '20px',
-              borderBottom: '1px solid #3e3e42',
+              borderBottom: theme === 'dark' ? '1px solid #3e3e42' : '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between'
             }}>
-              <div className="modal-title" style={{ fontSize: '16px', fontWeight: '600', color: '#e74c3c' }}>
+              <div className="modal-title" style={{ fontSize: '16px', fontWeight: '600', color: theme === 'dark' ? '#e74c3c' : '#dc2626' }}>
                 eBOM 변경사항 적용 확인
               </div>
               <div
                 className="modal-close"
                 onClick={() => setShowModal(false)}
-                style={{ cursor: 'pointer', fontSize: '20px', color: '#cccccc' }}
+                style={{ cursor: 'pointer', fontSize: '20px', color: theme === 'dark' ? '#cccccc' : '#111827' }}
               >
                 ×
               </div>
             </div>
 
             <div className="modal-body" style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-              <p style={{ marginBottom: '20px', color: '#cccccc' }}>
+              <p style={{ marginBottom: '20px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
                 다음 eBOM 변경사항을 M-BOM에 적용하시겠습니까?
               </p>
 
-              <div style={{ background: '#1e1e1e', padding: '15px', borderRadius: '6px' }}>
-                <h4 style={{ marginBottom: '15px', color: '#f39c12' }}>변경 항목</h4>
+              <div style={{ background: theme === 'dark' ? '#1e1e1e' : '#ffffff', padding: '15px', borderRadius: '6px' }}>
+                <h4 style={{ marginBottom: '15px', color: theme === 'dark' ? '#f39c12' : '#f59e0b' }}>변경 항목</h4>
                 {ebomChanges.map((change, index) => (
                   <label key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                     <input type="checkbox" defaultChecked style={{ marginRight: '10px' }} />
-                    <span style={{ color: '#9cdcfe' }}>{change.partNumber}</span>
-                    <span style={{ marginLeft: 'auto', color: '#969696', fontSize: '12px' }}>
+                    <span style={{ color: theme === 'dark' ? '#9cdcfe' : '#2563eb' }}>{change.partNumber}</span>
+                    <span style={{ marginLeft: 'auto', color: theme === 'dark' ? '#969696' : '#6b7280', fontSize: '12px' }}>
                       {change.field}: {change.oldValue} → {change.newValue}
                     </span>
                   </label>
@@ -784,10 +1266,10 @@ const CompleteMBOMDashboard = () => {
               <div style={{
                 marginTop: '20px',
                 padding: '10px',
-                background: '#3c3c3c',
+                background: theme === 'dark' ? '#3c3c3c' : '#e5e7eb',
                 borderRadius: '4px',
                 fontSize: '12px',
-                color: '#f39c12'
+                color: theme === 'dark' ? '#f39c12' : '#f59e0b'
               }}>
                 ⚠️ 주의: 이 작업은 되돌릴 수 없습니다. 적용 전 백업을 권장합니다.
               </div>
@@ -795,7 +1277,7 @@ const CompleteMBOMDashboard = () => {
 
             <div className="modal-footer" style={{
               padding: '20px',
-              borderTop: '1px solid #3e3e42',
+              borderTop: theme === 'dark' ? '1px solid #3e3e42' : '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '10px'

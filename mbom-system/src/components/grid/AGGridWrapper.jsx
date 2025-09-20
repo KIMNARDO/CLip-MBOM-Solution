@@ -87,7 +87,7 @@ const AGGridWrapper = ({ data, onRowDragEnd, onCellValueChanged, getContextMenuI
       tooltipField: 'description'
     },
     {
-      headerName: '수량',
+      headerName: 'U/S',
       field: 'quantity',
       width: 70,
       type: 'numericColumn',

@@ -53,7 +53,7 @@ const SimpleAGGrid = ({ data }) => {
       width: 250
     },
     {
-      headerName: '수량',
+      headerName: 'U/S',
       field: 'quantity',
       width: 100
     },

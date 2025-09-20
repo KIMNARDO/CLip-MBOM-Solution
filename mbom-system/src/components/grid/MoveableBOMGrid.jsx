@@ -87,7 +87,7 @@ const MoveableBOMGrid = ({ data }) => {
       tooltipField: 'description'
     },
     {
-      headerName: '수량',
+      headerName: 'U/S',
       field: 'quantity',
       width: 70,
       type: 'numericColumn',

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import clientNotificationService from '../services/clientNotificationService';
 
 const NotificationContext = createContext();
 
@@ -12,6 +13,37 @@ export const useNotification = () => {
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // 서비스 초기화
+  useEffect(() => {
+    // 리스너 등록
+    const handleNotification = (notification) => {
+      // 클라이언트 알림 추가
+      setNotifications(prev => [...prev, notification]);
+
+      // Auto-remove notification after duration
+      if (notification.duration && notification.duration > 0) {
+        setTimeout(() => {
+          removeNotification(notification.id);
+        }, notification.duration);
+      }
+    };
+
+    clientNotificationService.addListener(handleNotification);
+
+    // 기존 알림 불러오기
+    const existingNotifications = clientNotificationService.getNotifications({ unread: true });
+    setNotifications(existingNotifications);
+
+    // 연결 상태를 항상 true로 설정 (클라이언트 전용이므로)
+    setIsConnected(true);
+
+    // Cleanup
+    return () => {
+      clientNotificationService.removeListener(handleNotification);
+    };
+  }, []);
 
   const addNotification = useCallback((notification) => {
     const id = Date.now();
@@ -19,6 +51,7 @@ export const NotificationProvider = ({ children }) => {
       id,
       type: 'info',
       duration: 3000,
+      timestamp: Date.now(),
       ...notification
     };
 
@@ -74,13 +107,18 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   const markAsRead = useCallback((id) => {
-    setNotifications(prev => prev.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
+    // 클라이언트에서 알림 읽음 처리
+    const success = clientNotificationService.markAsRead(id);
+    if (success) {
+      setNotifications(prev => prev.map(n =>
+        n.id === id ? { ...n, read: true } : n
+      ));
+    }
   }, []);
 
   const value = {
     notifications,
+    isConnected,
     addNotification,
     removeNotification,
     clearAllNotifications,
@@ -94,47 +132,6 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      <NotificationContainer
-        notifications={notifications}
-        removeNotification={removeNotification}
-      />
     </NotificationContext.Provider>
-  );
-};
-
-// Notification Container Component
-const NotificationContainer = ({ notifications, removeNotification }) => {
-  if (notifications.length === 0) return null;
-
-  return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      {notifications.map((notif) => (
-        <div
-          key={notif.id}
-          className={`
-            alert max-w-md shadow-lg animate-slide-in-right
-            ${notif.type === 'success' && 'alert-success'}
-            ${notif.type === 'error' && 'alert-error'}
-            ${notif.type === 'warning' && 'alert-warning'}
-            ${notif.type === 'info' && 'alert-info'}
-          `}
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              {notif.title && (
-                <h3 className="font-semibold mb-1">{notif.title}</h3>
-              )}
-              <p>{notif.message}</p>
-            </div>
-            <button
-              onClick={() => removeNotification(notif.id)}
-              className="ml-4 text-current opacity-70 hover:opacity-100"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 };

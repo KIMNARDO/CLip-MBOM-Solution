@@ -96,7 +96,7 @@ const SafeBOMGrid = ({ data }) => {
       width: 200
     },
     {
-      headerName: '수량',
+      headerName: 'U/S',
       field: 'quantity',
       width: 80,
       type: 'numericColumn'

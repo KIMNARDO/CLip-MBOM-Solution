@@ -1,10 +1,11 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-import { useBOMData } from '../../contexts/BOMDataContext';
-import { useNotification } from '../../contexts/NotificationContext';
-import 'ag-grid-enterprise';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { useBOMData } from '../../contexts/BOMDataContext';
+import { useNotification } from '../../contexts/NotificationContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import EnhancedLevelIndicator from '../level/EnhancedLevelIndicator';
 
 /**
  * UnifiedBOMGrid - 통합 BOM 그리드 컴포넌트
@@ -14,14 +15,24 @@ const UnifiedBOMGrid = ({
   data,
   onSelectionChanged,
   onCellEditingStarted,
-  onCellEditingStoppedCallback,
-  theme = 'ag-theme-alpine-dark'
+  onCellEditingStoppedCallback
 }) => {
   const gridRef = useRef();
-  const { updateBOMItem, addBOMItem, deleteBOMItem, moveItem } = useBOMData();
+  const {
+    updateBOMItem,
+    addBOMItem,
+    deleteBOMItem,
+    moveItem,
+    expandedNodeIds,
+    customColumns,
+    setGridApi,
+    toggleNodeExpanded
+  } = useBOMData();
   const { showSuccess, showWarning, showError, showInfo } = useNotification();
+  const { theme: appTheme } = useTheme();
+  const gridTheme = appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine';
 
-  const [gridApi, setGridApi] = useState(null);
+  const [gridApiState, setGridApiState] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [quickFilter, setQuickFilter] = useState('');
 
@@ -56,11 +67,28 @@ const UnifiedBOMGrid = ({
 
   // 그리드 데이터 준비
   const rowData = useMemo(() => {
-    return convertToTreeData(data);
+    console.log('UnifiedBOMGrid - Received data:', data);
+    console.log('UnifiedBOMGrid - Data type:', typeof data);
+    console.log('UnifiedBOMGrid - Data is array:', Array.isArray(data));
+    console.log('UnifiedBOMGrid - Data length:', data ? data.length : 'null/undefined');
+
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      console.warn('UnifiedBOMGrid - No data received!');
+      console.warn('UnifiedBOMGrid - Data details:', { data, type: typeof data, isArray: Array.isArray(data) });
+      return [];
+    }
+
+    const treeData = convertToTreeData(data);
+    console.log('UnifiedBOMGrid - Tree data prepared:', treeData);
+    console.log('UnifiedBOMGrid - Tree data length:', treeData.length);
+    console.log('UnifiedBOMGrid - First item:', treeData[0]);
+
+    return treeData;
   }, [data, convertToTreeData]);
 
-  // 컬럼 정의
-  const columnDefs = useMemo(() => [
+  // 컬럼 정의 (동적 컬럼 포함)
+  const columnDefs = useMemo(() => {
+    const columns = [
     {
       headerName: '',
       field: 'selection',
@@ -72,9 +100,25 @@ const UnifiedBOMGrid = ({
     {
       headerName: 'Level',
       field: 'level',
-      width: 80,
-      cellClass: params => `level-${params.value}`,
-      pinned: 'left'
+      width: 120,
+      pinned: 'left',
+      cellRenderer: params => {
+        if (!params.data) return null;
+
+        return React.createElement(EnhancedLevelIndicator, {
+          level: params.value || 0,
+          hasChildren: params.data.children && params.data.children.length > 0,
+          isExpanded: params.node.expanded,
+          onToggle: () => {
+            params.node.setExpanded(!params.node.expanded);
+          },
+          partType: params.data.partType,
+          itemCount: params.data.children ? params.data.children.length : 0,
+          criticalPath: params.data.criticalPath,
+          changeStatus: params.data.diff_status
+        });
+      },
+      autoHeight: true
     },
     {
       headerName: '품번',
@@ -100,7 +144,7 @@ const UnifiedBOMGrid = ({
       }
     },
     {
-      headerName: '수량',
+      headerName: 'U/S',
       field: 'quantity',
       width: 100,
       editable: params => params.data.level !== 0,
@@ -185,7 +229,22 @@ const UnifiedBOMGrid = ({
       editable: true,
       cellEditor: 'agLargeTextCellEditor'
     }
-  ], []);
+  ];
+
+  // 동적 컬럼 추가
+  const dynamicColumns = customColumns ? customColumns.map(col => ({
+    headerName: col.headerName,
+    field: col.field,
+    editable: col.editable !== false,
+    width: col.width || 150,
+    cellEditor: col.type === 'number' ? 'agNumberCellEditor' :
+                col.type === 'date' ? 'agDateCellEditor' :
+                col.type === 'boolean' ? 'agCheckboxCellEditor' :
+                'agTextCellEditor'
+  })) : [];
+
+  return [...columns, ...dynamicColumns];
+  }, [customColumns]);
 
   // 기본 컬럼 설정
   const defaultColDef = useMemo(() => ({
@@ -199,10 +258,6 @@ const UnifiedBOMGrid = ({
 
   // Grid Options
   const gridOptions = useMemo(() => ({
-    // Tree Data 설정
-    treeData: true,
-    getDataPath: data => data.path,
-    groupDefaultExpanded: 1,
 
     // 편집 설정
     editType: 'fullRow',
@@ -226,46 +281,47 @@ const UnifiedBOMGrid = ({
     rowHeight: 35,
     headerHeight: 40,
 
-    // 상태바 설정
-    statusBar: {
-      statusPanels: [
-        { statusPanel: 'agTotalAndFilteredRowCountComponent', align: 'left' },
-        { statusPanel: 'agSelectedRowCountComponent' },
-        { statusPanel: 'agAggregationComponent' }
-      ]
-    },
-
-    // 사이드바 설정
-    sideBar: {
-      toolPanels: [
-        {
-          id: 'columns',
-          labelDefault: '컬럼',
-          labelKey: 'columns',
-          iconKey: 'columns',
-          toolPanel: 'agColumnsToolPanel',
-          minWidth: 225,
-          maxWidth: 225
-        },
-        {
-          id: 'filters',
-          labelDefault: '필터',
-          labelKey: 'filters',
-          iconKey: 'filter',
-          toolPanel: 'agFiltersToolPanel',
-          minWidth: 225,
-          maxWidth: 225
-        }
-      ],
-      defaultToolPanel: ''
-    }
+    // 페이지네이션 설정 (Community Edition)
+    pagination: true,
+    paginationPageSize: 50,
+    paginationPageSizeSelector: [20, 50, 100, 200]
   }), []);
 
   // Grid Ready 이벤트
   const onGridReady = useCallback(params => {
-    setGridApi(params.api);
+    console.log('UnifiedBOMGrid - Grid is ready!');
+    const api = params.api;
+    setGridApiState(api);
+
+    // Context에 Grid API 등록
+    if (setGridApi) {
+      setGridApi(api);
+    }
+
+    // 초기 확장 상태 적용
+    if (expandedNodeIds) {
+      setTimeout(() => {
+        api.forEachNode((node) => {
+          if (node.data && expandedNodeIds.has(node.data.id)) {
+            api.setRowNodeExpanded(node, true);
+          }
+        });
+      }, 100);
+    }
+
+    // Check if data is loaded
+    const rowCount = api.getDisplayedRowCount();
+    console.log('UnifiedBOMGrid - Displayed row count:', rowCount);
+
     params.api.sizeColumnsToFit();
-  }, []);
+  }, [expandedNodeIds, setGridApi]);
+
+  // Row expanded event handler (양방향 동기화)
+  const onRowGroupOpened = useCallback((params) => {
+    if (params.node && params.node.data && toggleNodeExpanded) {
+      toggleNodeExpanded(params.node.data.id, params.node.expanded);
+    }
+  }, [toggleNodeExpanded]);
 
   // 셀 편집 완료 이벤트
   const onCellEditingStoppedHandler = useCallback(params => {
@@ -312,10 +368,10 @@ const UnifiedBOMGrid = ({
 
   // 빠른 필터 적용
   useEffect(() => {
-    if (gridApi) {
-      gridApi.setQuickFilter(quickFilter);
+    if (gridApiState && gridApiState.setGridOption) {
+      gridApiState.setGridOption('quickFilterText', quickFilter);
     }
-  }, [quickFilter, gridApi]);
+  }, [quickFilter, gridApiState]);
 
   // 컨텍스트 메뉴
   const getContextMenuItems = useCallback(params => {
@@ -388,52 +444,65 @@ const UnifiedBOMGrid = ({
     showSuccess('Excel 파일로 내보내기가 완료되었습니다');
   }, [showSuccess]);
 
+  console.log('=== UnifiedBOMGrid Render Debug ===');
+  console.log('Received data prop:', data);
+  console.log('Data type:', typeof data);
+  console.log('Data length:', data ? data.length : 'null/undefined');
+  console.log('RowData prepared:', rowData);
+  console.log('RowData length:', rowData.length);
+  console.log('ColumnDefs:', columnDefs.length, 'columns');
+  console.log('Theme:', gridTheme);
+  console.log('Grid ready state:', !!gridApiState);
+  console.log('==================================');
+
   return (
-    <div className="unified-bom-grid h-full w-full flex flex-col">
+    <div className="unified-bom-grid" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* 툴바 */}
-      <div className="grid-toolbar flex items-center gap-2 p-2 bg-gray-800 border-b border-gray-700">
+      <div className="grid-toolbar">
         <input
           type="text"
           placeholder="빠른 검색..."
-          className="px-3 py-1 bg-gray-700 text-white rounded"
+          className="vscode-input"
           value={quickFilter}
           onChange={e => setQuickFilter(e.target.value)}
+          style={{ width: '250px' }}
         />
         <button
           onClick={exportToExcel}
-          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="vscode-button"
         >
           Excel 내보내기
         </button>
         <button
-          onClick={() => gridApi?.expandAll()}
-          className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+          onClick={() => gridApiState?.expandAll()}
+          className="vscode-button secondary"
         >
           모두 펼치기
         </button>
         <button
-          onClick={() => gridApi?.collapseAll()}
-          className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+          onClick={() => gridApiState?.collapseAll()}
+          className="vscode-button secondary"
         >
           모두 접기
         </button>
-        <span className="ml-auto text-gray-400">
+        <span className="grid-status-text" style={{ marginLeft: 'auto' }}>
           선택: {selectedRows.length}개 / 전체: {rowData.length}개
         </span>
       </div>
 
       {/* 그리드 */}
-      <div className={`${theme} flex-1`}>
+      <div className={`${gridTheme} flex-1`} style={{ height: 'calc(100% - 50px)', width: '100%' }}>
         <AgGridReact
           ref={gridRef}
           rowData={rowData}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
-          gridOptions={gridOptions}
+          {...gridOptions}
           onGridReady={onGridReady}
           onCellEditingStopped={onCellEditingStoppedHandler}
           onSelectionChanged={onSelectionChangedHandler}
           onRowDragEnd={onRowDragEnd}
+          onRowGroupOpened={onRowGroupOpened}
           getContextMenuItems={getContextMenuItems}
         />
       </div>

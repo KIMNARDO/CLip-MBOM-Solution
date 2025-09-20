@@ -12,11 +12,17 @@ export const useBOMData = () => {
 };
 
 export const BOMDataProvider = ({ children }) => {
-  const [bomData, setBomData] = useState([]);
+  // Initialize with tree structured data directly
+  const initialTreeData = buildTreeStructure(sampleBOMData);
+
+  const [bomData, setBomData] = useState(initialTreeData);
   const [selectedItem, setSelectedItem] = useState(null);
   const [modifiedItems, setModifiedItems] = useState(new Set());
   const [changeHistory, setChangeHistory] = useState(sampleChanges);
   const [loading, setLoading] = useState(false);
+  const [expandedNodeIds, setExpandedNodeIds] = useState(new Set());
+  const [customColumns, setCustomColumns] = useState([]);
+  const [gridApi, setGridApi] = useState(null);
   const [filters, setFilters] = useState({
     project: '',
     partNumber: '',
@@ -26,17 +32,45 @@ export const BOMDataProvider = ({ children }) => {
 
   // Load initial BOM data
   useEffect(() => {
-    loadBOMData();
+    // Data is already initialized, just log it
+    console.log('BOM Data initialized with', bomData.length, 'root items');
+    if (bomData.length > 0) {
+      console.log('First item:', bomData[0]);
+    }
   }, []);
 
   const loadBOMData = useCallback(() => {
+    console.log('=== BOMDataContext - loadBOMData START ===');
     setLoading(true);
-    console.log('BOMDataContext - Loading sample data:', sampleBOMData);
-    // Use complete BOM data from original M-BOM.html
-    const treeData = buildTreeStructure(sampleBOMData);
-    console.log('BOMDataContext - Tree data built:', treeData);
-    setBomData(treeData);
-    setLoading(false);
+    
+    console.log('Sample BOM data:', sampleBOMData);
+    console.log('Sample data length:', sampleBOMData.length);
+    console.log('First sample item:', sampleBOMData[0]);
+    
+    try {
+      // Use complete BOM data from original M-BOM.html
+      const treeData = buildTreeStructure(sampleBOMData);
+      console.log('Tree data built successfully:', treeData);
+      console.log('Tree data length:', treeData.length);
+      
+      if (treeData.length > 0) {
+        console.log('First tree item:', treeData[0]);
+        console.log('Tree structure sample:', {
+          id: treeData[0].id,
+          partNumber: treeData[0].partNumber,
+          children: treeData[0].children?.length || 0
+        });
+      }
+      
+      console.log('Setting bomData state...');
+      setBomData(treeData);
+      console.log('BOM data state set successfully');
+    } catch (error) {
+      console.error('Error in loadBOMData:', error);
+    } finally {
+      setLoading(false);
+      console.log('=== BOMDataContext - loadBOMData COMPLETED ===');
+    }
   }, []);
 
   const loadBOMDataOld = useCallback(() => {
@@ -354,6 +388,46 @@ export const BOMDataProvider = ({ children }) => {
     });
   }, []);
 
+  // 사이드바-그리드 동기화 함수
+  const toggleNodeExpanded = useCallback((nodeId, expanded) => {
+    setExpandedNodeIds(prev => {
+      const newSet = new Set(prev);
+      if (expanded) {
+        newSet.add(nodeId);
+      } else {
+        newSet.delete(nodeId);
+      }
+
+      // AG-Grid API를 통해 그리드 노드 상태 동기화
+      if (gridApi) {
+        gridApi.forEachNode((node) => {
+          if (node.data && node.data.id === nodeId) {
+            gridApi.setRowNodeExpanded(node, expanded);
+          }
+        });
+      }
+
+      return newSet;
+    });
+  }, [gridApi]);
+
+  // 동적 컬럼 추가 함수
+  const addCustomColumn = useCallback((column) => {
+    setCustomColumns(prev => [...prev, {
+      id: Date.now(),
+      field: column.field,
+      headerName: column.headerName,
+      editable: true,
+      width: 150,
+      ...column
+    }]);
+  }, []);
+
+  // 동적 컬럼 삭제 함수
+  const removeCustomColumn = useCallback((columnId) => {
+    setCustomColumns(prev => prev.filter(col => col.id !== columnId));
+  }, []);
+
   const value = {
     bomData,
     selectedItem,
@@ -361,15 +435,24 @@ export const BOMDataProvider = ({ children }) => {
     changeHistory,
     loading,
     filters,
+    expandedNodeIds,
+    customColumns,
+    gridApi,
     setSelectedItem,
     setFilters,
     setChangeHistory,
+    setExpandedNodeIds,
+    setCustomColumns,
+    setGridApi,
     loadBOMData,
     updateBOMItem,
     addBOMItem,
     deleteBOMItem,
     saveBOMData,
-    moveItem
+    moveItem,
+    toggleNodeExpanded,
+    addCustomColumn,
+    removeCustomColumn
   };
 
   return (
