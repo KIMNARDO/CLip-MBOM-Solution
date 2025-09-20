@@ -260,27 +260,54 @@ const MBOMAnalyticsDashboard = () => {
     return Object.entries(suppliers)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
+      .filter(s => s.name && s.name !== '-')
+      .slice(0, 6);
   }, [bomData]);
 
   // KPI 카드 컴포넌트
   const KPICard = ({ title, value, unit, change, icon, color }) => (
     <div className="stat-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <span className="stat-label">{title}</span>
-        <span style={{ fontSize: '20px' }}>{icon}</span>
-      </div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color: color || (isDark ? '#ffffff' : '#1f2937') }}>
-        {value}
-        {unit && <span className="stat-label" style={{ fontSize: '14px', marginLeft: '5px' }}>{unit}</span>}
+      <div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <span className="stat-label" style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            opacity: 0.8
+          }}>{title}</span>
+          <span style={{
+            fontSize: '18px',
+            lineHeight: '1'
+          }}>{icon}</span>
+        </div>
+        <div style={{
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: color || (isDark ? '#ffffff' : '#1f2937'),
+          lineHeight: '1.1'
+        }}>
+          {value}
+          {unit && <span style={{
+            fontSize: '12px',
+            marginLeft: '3px',
+            fontWeight: 'normal',
+            opacity: 0.7
+          }}>{unit}</span>}
+        </div>
       </div>
       {change !== undefined && (
         <div style={{
-          marginTop: '8px',
-          fontSize: '12px',
+          marginTop: 'auto',
+          paddingTop: '8px',
+          fontSize: '11px',
+          fontWeight: '500',
           color: change >= 0 ? COLORS.success : COLORS.danger
         }}>
-          {change >= 0 ? '▲' : '▼'} {Math.abs(change)}% vs 지난달
+          {change >= 0 ? '▲' : '▼'} {Math.abs(change)}%
         </div>
       )}
     </div>
@@ -300,7 +327,7 @@ const MBOMAnalyticsDashboard = () => {
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <h1 style={{ margin: 0, color: isDark ? '#cccccc' : '#1f2937' }}>📊 MBOM Analytics Dashboard</h1>
+        <h1 style={{ margin: 0, color: isDark ? '#cccccc' : '#1f2937', fontSize: '20px' }}>📊 Manufacturing BOM (M-BOM) 분석 대시보드</h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <select
             className="vscode-input"
@@ -330,17 +357,23 @@ const MBOMAnalyticsDashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex',
+        gap: '15px',
+        marginBottom: '20px',
+        flexWrap: 'wrap',
+        alignItems: 'stretch' // 모든 카드 높이를 같게
+      }}>
         <KPICard
-          title="총 부품 수"
+          title="제조 부품"
           value={metrics.totalParts}
           unit="개"
-          icon="📦"
+          icon="🔧"
           change={5.2}
           color={COLORS.primary}
         />
         <KPICard
-          title="총 어셈블리"
+          title="조립 라인"
           value={metrics.totalAssemblies}
           unit="개"
           icon="🏭"
@@ -348,7 +381,7 @@ const MBOMAnalyticsDashboard = () => {
           color={COLORS.success}
         />
         <KPICard
-          title="평균 리드타임"
+          title="생산 리드타임"
           value={metrics.averageLeadTime}
           unit="일"
           icon="⏱️"
@@ -356,7 +389,7 @@ const MBOMAnalyticsDashboard = () => {
           color={metrics.averageLeadTime > 30 ? COLORS.warning : COLORS.info}
         />
         <KPICard
-          title="총 비용"
+          title="제조 원가"
           value={new Intl.NumberFormat('ko-KR', {
             notation: 'compact',
             maximumFractionDigits: 1
@@ -367,15 +400,15 @@ const MBOMAnalyticsDashboard = () => {
           color={COLORS.purple}
         />
         <KPICard
-          title="위험 부품"
+          title="재고 부족"
           value={metrics.criticalParts}
           unit="개"
-          icon="⚠️"
+          icon="📉"
           change={-12.3}
           color={metrics.criticalParts > 0 ? COLORS.danger : COLORS.success}
         />
         <KPICard
-          title="완료율"
+          title="생산 준비율"
           value={metrics.completionRate}
           unit="%"
           icon="✅"
@@ -385,20 +418,15 @@ const MBOMAnalyticsDashboard = () => {
       </div>
 
       {/* Charts Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-        gap: '20px'
-      }}>
+      <div className="charts-grid">
         {/* 레벨별 분포 */}
-        <div style={{
-          background: isDark ? '#2d2d30' : '#ffffff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: `1px solid ${COLORS.grid}`
-        }}>
-          <h3 style={{ margin: '0 0 15px', color: COLORS.text }}>레벨별 부품 분포</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="chart-section">
+          <h3 className="chart-title">
+            <span>📊</span>
+            제조 단계별 구조
+          </h3>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={250}>
             <BarChart data={levelDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} />
               <XAxis dataKey="name" stroke={COLORS.text} />
@@ -410,17 +438,17 @@ const MBOMAnalyticsDashboard = () => {
               <Bar dataKey="value" fill={COLORS.primary} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* 상태별 분포 */}
-        <div style={{
-          background: isDark ? '#2d2d30' : '#ffffff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: `1px solid ${COLORS.grid}`
-        }}>
-          <h3 style={{ margin: '0 0 15px', color: COLORS.text }}>BOM 상태 분포</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="chart-section">
+          <h3 className="chart-title">
+            <span>🎯</span>
+            생산 준비 상태
+          </h3>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={statusDistribution}
@@ -444,17 +472,17 @@ const MBOMAnalyticsDashboard = () => {
               />
             </PieChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* 리드타임 분석 */}
-        <div style={{
-          background: isDark ? '#2d2d30' : '#ffffff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: `1px solid ${COLORS.grid}`
-        }}>
-          <h3 style={{ margin: '0 0 15px', color: COLORS.text }}>리드타임 분포</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="chart-section">
+          <h3 className="chart-title">
+            <span>⏱️</span>
+            제조 리드타임 분석
+          </h3>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={250}>
             <ComposedChart data={leadTimeAnalysis}>
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} />
               <XAxis dataKey="range" stroke={COLORS.text} />
@@ -474,17 +502,17 @@ const MBOMAnalyticsDashboard = () => {
               />
             </ComposedChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* 변경 이력 트렌드 */}
-        <div style={{
-          background: isDark ? '#2d2d30' : '#ffffff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: `1px solid ${COLORS.grid}`
-        }}>
-          <h3 style={{ margin: '0 0 15px', color: COLORS.text }}>변경 이력 트렌드</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="chart-section">
+          <h3 className="chart-title">
+            <span>📈</span>
+            제조 BOM 변경 추이
+          </h3>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={changeTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} />
               <XAxis dataKey="date" stroke={COLORS.text} />
@@ -502,57 +530,64 @@ const MBOMAnalyticsDashboard = () => {
               />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* 공급업체 분석 */}
-        <div style={{
-          background: isDark ? '#2d2d30' : '#ffffff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: `1px solid ${COLORS.grid}`
-        }}>
-          <h3 style={{ margin: '0 0 15px', color: COLORS.text }}>주요 공급업체</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={supplierAnalysis} layout="horizontal">
+        <div className="chart-section">
+          <h3 className="chart-title">
+            <span>🏭</span>
+            협력사별 부품 공급
+          </h3>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={supplierAnalysis}>
               <CartesianGrid strokeDasharray="3 3" stroke={COLORS.grid} />
-              <XAxis type="number" stroke={COLORS.text} />
-              <YAxis type="category" dataKey="name" stroke={COLORS.text} width={100} />
+              <XAxis
+                dataKey="name"
+                stroke={COLORS.text}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                interval={0}
+                tick={{fontSize: 10}}
+              />
+              <YAxis stroke={COLORS.text} />
               <Tooltip
                 contentStyle={{ background: isDark ? '#2d2d30' : '#ffffff', border: `1px solid ${COLORS.grid}` }}
                 labelStyle={{ color: COLORS.text }}
               />
-              <Bar dataKey="count" fill={COLORS.success} />
+              <Bar dataKey="count" fill={COLORS.success} name="부품 수" />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Top 10 고비용 부품 */}
-        <div style={{
-          background: isDark ? '#2d2d30' : '#ffffff',
-          borderRadius: '8px',
-          padding: '20px',
-          border: `1px solid ${COLORS.grid}`
-        }}>
-          <h3 style={{ margin: '0 0 15px', color: COLORS.text }}>Top 10 고비용 부품</h3>
-          <div style={{ maxHeight: '300px', overflow: 'auto' }}>
+        <div className="chart-section">
+          <h3 className="chart-title">
+            <span>💰</span>
+            제조 원가 TOP 10
+          </h3>
+          <div style={{ maxHeight: '250px', overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #3e3e42' }}>
-                  <th style={{ padding: '8px', textAlign: 'left', color: COLORS.text }}>품번</th>
-                  <th style={{ padding: '8px', textAlign: 'left', color: COLORS.text }}>품명</th>
-                  <th style={{ padding: '8px', textAlign: 'right', color: COLORS.text }}>수량</th>
-                  <th style={{ padding: '8px', textAlign: 'right', color: COLORS.text }}>총 비용</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: COLORS.text, fontSize: '11px' }}>부품번호</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: COLORS.text, fontSize: '11px' }}>부품명</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: COLORS.text, fontSize: '11px' }}>투입수량</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: COLORS.text, fontSize: '11px' }}>제조원가</th>
                 </tr>
               </thead>
               <tbody>
                 {costAnalysis.map((item, index) => (
                   <tr key={index} style={{ borderBottom: '1px solid #252526' }}>
-                    <td style={{ padding: '8px', color: '#9cdcfe' }}>{item.partNumber}</td>
-                    <td style={{ padding: '8px', color: COLORS.text }}>{item.description}</td>
-                    <td style={{ padding: '8px', textAlign: 'right', color: COLORS.text }}>
+                    <td style={{ padding: '6px', color: '#9cdcfe', fontSize: '11px' }}>{item.partNumber}</td>
+                    <td style={{ padding: '6px', color: COLORS.text, fontSize: '11px' }}>{item.description}</td>
+                    <td style={{ padding: '6px', textAlign: 'right', color: COLORS.text, fontSize: '11px' }}>
                       {item.quantity}
                     </td>
-                    <td style={{ padding: '8px', textAlign: 'right', color: '#f39c12', fontWeight: 'bold' }}>
+                    <td style={{ padding: '6px', textAlign: 'right', color: '#f39c12', fontWeight: 'bold', fontSize: '11px' }}>
                       {item.costFormatted}
                     </td>
                   </tr>

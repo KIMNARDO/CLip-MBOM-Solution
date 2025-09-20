@@ -9,6 +9,7 @@ import { useBOM } from '../../contexts/BOMContext';
 import UnifiedNotificationManager from '../notification/UnifiedNotificationManager';
 import QuantityDifferenceAnalysis from '../comparison/QuantityDifferenceAnalysis';
 import MBOMAnalyticsDashboard from './MBOMAnalyticsDashboard';
+import ExcelSync from '../ExcelSync';
 import { Sun, Moon } from 'lucide-react';
 
 const CompleteMBOMDashboard = () => {
@@ -62,6 +63,7 @@ const CompleteMBOMDashboard = () => {
   const [ebomData, setEbomData] = useState(null);
   const [showDashboard, setShowDashboard] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showExcelSync, setShowExcelSync] = useState(false);
 
   // 초기화 시 eBOM 변경사항 시뮬레이션
   useEffect(() => {
@@ -397,6 +399,12 @@ const CompleteMBOMDashboard = () => {
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Unified Notification Manager */}
       <UnifiedNotificationManager />
+
+      {/* Excel Sync Modal */}
+      {showExcelSync && (
+        <ExcelSync onClose={() => setShowExcelSync(false)} />
+      )}
+
       {/* Notification Banner */}
       {showNotificationBanner && (
         <div className="notification-banner show" style={{
@@ -493,6 +501,10 @@ const CompleteMBOMDashboard = () => {
           <div className="menu-dropdown-item" onClick={handleOpenFile}>열기...</div>
           <div className="menu-dropdown-item" onClick={handleSave}>저장</div>
           <div className="menu-dropdown-item" onClick={handleExportExcel}>다른 이름으로 저장...</div>
+          <div className="dropdown-divider" />
+          <div className="menu-dropdown-item" onClick={() => { setShowExcelSync(true); setActiveDropdown(null); }}>
+            Excel 템플릿 동기화...
+          </div>
           <div className="dropdown-divider" />
           <div className="menu-dropdown-item" onClick={logout}>종료</div>
         </div>

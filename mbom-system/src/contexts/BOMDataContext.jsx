@@ -46,10 +46,7 @@ export const BOMDataProvider = ({ children }) => {
       const treeData = buildTreeStructure(sampleBOMData);
       
       if (treeData.length > 0) {
-          id: treeData[0].id,
-          partNumber: treeData[0].partNumber,
-          children: treeData[0].children?.length || 0
-        });
+        // Tree data loaded successfully
       }
       
       setBomData(treeData);
@@ -415,6 +412,7 @@ export const BOMDataProvider = ({ children }) => {
 
   const value = {
     bomData,
+    setBOMData: setBomData,
     selectedItem,
     modifiedItems,
     changeHistory,
