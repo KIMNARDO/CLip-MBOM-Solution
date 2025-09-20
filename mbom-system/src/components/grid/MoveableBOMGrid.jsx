@@ -36,8 +36,6 @@ const MoveableBOMGrid = ({ data }) => {
       data.forEach(item => processItem(item, []));
     }
 
-    console.log('MoveableBOMGrid - Input data:', data);
-    console.log(`MoveableBOMGrid - Grid rows: ${result.length}`, result);
     return result;
   }, [data]);
 
@@ -193,7 +191,6 @@ const MoveableBOMGrid = ({ data }) => {
 
   // Drag start - prepare for CUT operation
   const onRowDragEnter = useCallback(() => {
-    console.log('Drag enter');
   }, []);
 
   const onRowDragEnd = useCallback((event) => {
@@ -213,7 +210,6 @@ const MoveableBOMGrid = ({ data }) => {
       return;
     }
 
-    console.log(`Moving item ${draggedData.partNumber} (Level ${draggedData.level}) near ${targetData.partNumber} (Level ${targetData.level})`);
 
     // Check for circular reference
     const wouldCreateCircular = (sourceId, targetId) => {
@@ -263,7 +259,6 @@ const MoveableBOMGrid = ({ data }) => {
       // Moving to a parent level (e.g., L1 to L0)
       // The target becomes the new parent
       newParentId = targetData.originalId;
-      console.log(`Moving ${draggedData.partNumber} (L${draggedLevel}) as child of ${targetData.partNumber} (L${targetLevel})`);
     } else {
       // Same level or moving up - become siblings
       const targetPath = targetData.path;
@@ -272,11 +267,9 @@ const MoveableBOMGrid = ({ data }) => {
         const parentPartNumber = targetPath[targetPath.length - 2];
         const parent = rowData.find(row => row.partNumber === parentPartNumber);
         newParentId = parent ? parent.originalId : null;
-        console.log(`Moving ${draggedData.partNumber} as sibling of ${targetData.partNumber} under parent ${parentPartNumber || 'ROOT'}`);
       } else {
         // Target is at root - place at root
         newParentId = null;
-        console.log(`Moving ${draggedData.partNumber} to root level`);
       }
     }
 
@@ -310,13 +303,11 @@ const MoveableBOMGrid = ({ data }) => {
   }, []);
 
   const onRowDragLeave = useCallback(() => {
-    console.log('Drag leave');
   }, []);
 
   // Grid event handlers
   const onGridReady = useCallback((params) => {
     setGridApi(params.api);
-    console.log('Grid ready with', params.api.getDisplayedRowCount(), 'rows');
   }, []);
 
   const onCellValueChanged = useCallback((params) => {
@@ -423,7 +414,6 @@ const MoveableBOMGrid = ({ data }) => {
   // Monitor data changes
   useEffect(() => {
     if (gridApi) {
-      console.log('Data updated, refreshing grid');
       gridApi.refreshCells({ force: true });
     }
   }, [data, gridApi]);

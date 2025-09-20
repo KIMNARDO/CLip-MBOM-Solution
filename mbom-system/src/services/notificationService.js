@@ -27,7 +27,6 @@ class NotificationService {
       this.ws = new WebSocket(`${this.wsUrl}?userId=${userId}`);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connected for notifications');
         this.isConnected = true;
         this.reconnectAttempts = 0;
 
@@ -60,7 +59,6 @@ class NotificationService {
       };
 
       this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
         this.isConnected = false;
         this.notifyListeners({
           type: 'connection',
@@ -82,7 +80,6 @@ class NotificationService {
   attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
       setTimeout(() => {
         if (!this.isConnected && this.userId) {

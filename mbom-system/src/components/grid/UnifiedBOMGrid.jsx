@@ -67,22 +67,11 @@ const UnifiedBOMGrid = ({
 
   // 그리드 데이터 준비
   const rowData = useMemo(() => {
-    console.log('UnifiedBOMGrid - Received data:', data);
-    console.log('UnifiedBOMGrid - Data type:', typeof data);
-    console.log('UnifiedBOMGrid - Data is array:', Array.isArray(data));
-    console.log('UnifiedBOMGrid - Data length:', data ? data.length : 'null/undefined');
-
     if (!data || !Array.isArray(data) || data.length === 0) {
-      console.warn('UnifiedBOMGrid - No data received!');
-      console.warn('UnifiedBOMGrid - Data details:', { data, type: typeof data, isArray: Array.isArray(data) });
       return [];
     }
 
     const treeData = convertToTreeData(data);
-    console.log('UnifiedBOMGrid - Tree data prepared:', treeData);
-    console.log('UnifiedBOMGrid - Tree data length:', treeData.length);
-    console.log('UnifiedBOMGrid - First item:', treeData[0]);
-
     return treeData;
   }, [data, convertToTreeData]);
 
@@ -289,7 +278,6 @@ const UnifiedBOMGrid = ({
 
   // Grid Ready 이벤트
   const onGridReady = useCallback(params => {
-    console.log('UnifiedBOMGrid - Grid is ready!');
     const api = params.api;
     setGridApiState(api);
 
@@ -311,7 +299,6 @@ const UnifiedBOMGrid = ({
 
     // Check if data is loaded
     const rowCount = api.getDisplayedRowCount();
-    console.log('UnifiedBOMGrid - Displayed row count:', rowCount);
 
     params.api.sizeColumnsToFit();
   }, [expandedNodeIds, setGridApi]);
@@ -444,16 +431,6 @@ const UnifiedBOMGrid = ({
     showSuccess('Excel 파일로 내보내기가 완료되었습니다');
   }, [showSuccess]);
 
-  console.log('=== UnifiedBOMGrid Render Debug ===');
-  console.log('Received data prop:', data);
-  console.log('Data type:', typeof data);
-  console.log('Data length:', data ? data.length : 'null/undefined');
-  console.log('RowData prepared:', rowData);
-  console.log('RowData length:', rowData.length);
-  console.log('ColumnDefs:', columnDefs.length, 'columns');
-  console.log('Theme:', gridTheme);
-  console.log('Grid ready state:', !!gridApiState);
-  console.log('==================================');
 
   return (
     <div className="unified-bom-grid" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>

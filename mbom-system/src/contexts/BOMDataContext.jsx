@@ -33,43 +33,30 @@ export const BOMDataProvider = ({ children }) => {
   // Load initial BOM data
   useEffect(() => {
     // Data is already initialized, just log it
-    console.log('BOM Data initialized with', bomData.length, 'root items');
     if (bomData.length > 0) {
-      console.log('First item:', bomData[0]);
     }
   }, []);
 
   const loadBOMData = useCallback(() => {
-    console.log('=== BOMDataContext - loadBOMData START ===');
     setLoading(true);
     
-    console.log('Sample BOM data:', sampleBOMData);
-    console.log('Sample data length:', sampleBOMData.length);
-    console.log('First sample item:', sampleBOMData[0]);
     
     try {
       // Use complete BOM data from original M-BOM.html
       const treeData = buildTreeStructure(sampleBOMData);
-      console.log('Tree data built successfully:', treeData);
-      console.log('Tree data length:', treeData.length);
       
       if (treeData.length > 0) {
-        console.log('First tree item:', treeData[0]);
-        console.log('Tree structure sample:', {
           id: treeData[0].id,
           partNumber: treeData[0].partNumber,
           children: treeData[0].children?.length || 0
         });
       }
       
-      console.log('Setting bomData state...');
       setBomData(treeData);
-      console.log('BOM data state set successfully');
     } catch (error) {
       console.error('Error in loadBOMData:', error);
     } finally {
       setLoading(false);
-      console.log('=== BOMDataContext - loadBOMData COMPLETED ===');
     }
   }, []);
 
@@ -252,7 +239,6 @@ export const BOMDataProvider = ({ children }) => {
   const saveBOMData = useCallback(async () => {
     try {
       // In production, this would be an API call
-      console.log('Saving BOM data:', bomData);
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       setModifiedItems(new Set());
@@ -378,7 +364,6 @@ export const BOMDataProvider = ({ children }) => {
         // Add to new position
         addToParent(clonedData, newParentId);
         setModifiedItems(prev => new Set([...prev, itemId]));
-        console.log(`Moved item ${itemId} to parent ${newParentId || 'root'}`);
       } else {
         console.error(`Failed to move item ${itemId}`);
         return prevData;

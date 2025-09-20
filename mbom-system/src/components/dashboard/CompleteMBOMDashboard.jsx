@@ -385,7 +385,6 @@ const CompleteMBOMDashboard = () => {
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
       if (changeHistory.length > 0) {
-        console.log('자동 저장 실행...');
         showInfo('자동 저장 중...');
       }
     }, 60000); // 1분마다
@@ -393,28 +392,6 @@ const CompleteMBOMDashboard = () => {
     return () => clearInterval(autoSaveInterval);
   }, [changeHistory]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('=== CompleteMBOMDashboard Debug Info ===');
-    console.log('bomData:', bomData);
-    console.log('bomData type:', typeof bomData);
-    console.log('bomData length:', bomData ? bomData.length : 'null/undefined');
-    console.log('loading:', loading);
-    console.log('activeTab:', activeTab);
-    
-    if (bomData && bomData.length > 0) {
-      console.log('First item:', bomData[0]);
-      console.log('Sample structure:', {
-        id: bomData[0].id,
-        partNumber: bomData[0].partNumber,
-        hasChildren: bomData[0].hasChildren,
-        children: bomData[0].children?.length || 0
-      });
-    } else {
-      console.warn('⚠️ No BOM data available!');
-    }
-    console.log('=====================================');
-  }, [bomData, loading, activeTab]);
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>

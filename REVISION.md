@@ -1,5 +1,32 @@
 # Revision History
 
+## v2.1.0 - 2025-09-20
+### Project Cleanup & Optimization
+- **Code Cleanup**
+  - Removed 10 duplicate/unused grid components (kept UnifiedBOMGrid and MoveableBOMGrid)
+  - Removed 5 unused dashboard components (kept 3 essential dashboards)
+  - Deleted all test files, screenshots, and playwright configurations
+  - Removed all console.log statements from production code
+
+- **Dependency Optimization**
+  - Removed 14 unused npm packages (@radix-ui, @tanstack, etc.)
+  - Reduced production dependencies from 22 to 8 essential packages
+  - Cleaned up dev dependencies (removed playwright)
+
+- **Structure Improvements**
+  - Consolidated grid components from 12 to 2
+  - Reduced total components from ~40 to 27 essential
+  - Removed redundant test directories and backup files
+  - Organized project structure for better maintainability
+
+### Statistics
+- Files deleted: 85+ unnecessary files
+- Code reduction: ~30% less code to maintain
+- Bundle size: Significantly reduced by removing unused dependencies
+- Performance: Improved load times with optimized imports
+
+---
+
 ## v2.0.0 - 2025-09-20
 ### Major Features
 - **Complete Theme System Implementation**
