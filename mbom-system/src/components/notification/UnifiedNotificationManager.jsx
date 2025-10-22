@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -16,10 +16,10 @@ const UnifiedNotificationManager = () => {
     if (unread > 0) {
       const bellIcon = document.querySelector('.notification-bell');
       if (bellIcon) {
-        bellIcon.style.animation = 'bellShake 0.5s';
+        bellIcon.style.animation = 'bellShake 0.3s';
         setTimeout(() => {
           if (bellIcon) bellIcon.style.animation = '';
-        }, 500);
+        }, 300);
       }
     }
   }, [notifications]);

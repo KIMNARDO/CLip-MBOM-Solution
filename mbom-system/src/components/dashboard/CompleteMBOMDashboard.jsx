@@ -10,7 +10,11 @@ import UnifiedNotificationManager from '../notification/UnifiedNotificationManag
 import QuantityDifferenceAnalysis from '../comparison/QuantityDifferenceAnalysis';
 import MBOMAnalyticsDashboard from './MBOMAnalyticsDashboard';
 import ExcelSync from '../ExcelSync';
-import { Sun, Moon } from 'lucide-react';
+import DraftStatusDialog from '../dialogs/DraftStatusDialog';
+import ApprovalDialog from '../dialogs/ApprovalDialog';
+import { useApproval } from '../../contexts/ApprovalContext';
+import { BOMRulesGuide } from '../testing/BOMRulesGuide';
+import { Sun, Moon, Edit, CheckCircle, FileText, Clock } from 'lucide-react';
 
 const CompleteMBOMDashboard = () => {
   const { user, logout } = useAuth();
@@ -64,6 +68,17 @@ const CompleteMBOMDashboard = () => {
   const [showDashboard, setShowDashboard] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showExcelSync, setShowExcelSync] = useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [showBOMRules, setShowBOMRules] = useState(false);
+
+  // Approval Context
+  const {
+    pendingChanges,
+    documentStatus,
+    approvalQueue,
+    showDraftStatus
+  } = useApproval();
 
   // 초기화 시 eBOM 변경사항 시뮬레이션
   useEffect(() => {
@@ -127,8 +142,8 @@ const CompleteMBOMDashboard = () => {
     showSuccess(`"${newColumn.headerName}" 컬럼이 추가되었습니다`);
   };
 
-  // Filter items based on search and status
-  const filterItems = (items) => {
+  // Filter items based on search and status - Memoized
+  const filterItems = useCallback((items) => {
     return items.filter(item => {
       const matchesSearch = !searchTerm ||
         item.partNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,10 +153,10 @@ const CompleteMBOMDashboard = () => {
 
       return matchesSearch && matchesStatus;
     });
-  };
+  }, [searchTerm, filterStatus]);
 
-  // Render tree items recursively
-  const renderTreeItems = (items, level = 0) => {
+  // Render tree items recursively - Memoized
+  const renderTreeItems = useCallback((items, level = 0) => {
     const filteredItems = filterItems(items);
 
     return filteredItems.map(item => {
@@ -212,10 +227,10 @@ const CompleteMBOMDashboard = () => {
         </div>
       );
     });
-  };
+  }, [expandedNodeIds, selectedTreeItem, theme, filterItems, toggleExpand]);
 
-  // Apply eBOM changes
-  const applyEBOMChanges = () => {
+  // Apply eBOM changes - Memoized
+  const applyEBOMChanges = useCallback(() => {
     setShowModal(false);
     setShowNotificationBanner(false);
 
@@ -237,10 +252,10 @@ const CompleteMBOMDashboard = () => {
     });
 
     showSuccess(`${ebomChanges.length}개 eBOM 변경사항이 적용되었습니다`);
-  };
+  }, [ebomChanges, user, setChangeHistory, showSuccess]);
 
-  // 일괄 작업 기능들
-  const handleBulkApprove = () => {
+  // 일괄 작업 기능들 - Memoized
+  const handleBulkApprove = useCallback(() => {
     const pendingItems = changeHistory.filter(item => item.status === 'pending');
     if (pendingItems.length === 0) {
       showWarning('승인할 대기 중인 항목이 없습니다');
@@ -251,22 +266,22 @@ const CompleteMBOMDashboard = () => {
       item.status === 'pending' ? { ...item, status: 'approved' } : item
     ));
     showSuccess(`${pendingItems.length}개 항목이 승인되었습니다`);
-  };
+  }, [changeHistory, setChangeHistory, showSuccess, showWarning]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = useCallback(() => {
     showInfo('Excel 내보내기 준비 중...');
     setTimeout(() => {
       const filename = `MBOM_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
       showSuccess(`파일이 다운로드되었습니다: ${filename}`);
     }, 2000);
-  };
+  }, [showInfo, showSuccess]);
 
 
-  const handleImportData = () => {
+  const handleImportData = useCallback(() => {
     showInfo('데이터 가져오기 대화상자 열기...');
-  };
+  }, [showInfo]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const result = await saveBOMData();
     if (result.success) {
       showSuccess('BOM 데이터가 저장되었습니다');
@@ -274,7 +289,7 @@ const CompleteMBOMDashboard = () => {
     } else {
       showError('저장 실패');
     }
-  };
+  }, [saveBOMData, setChangeHistory, showSuccess, showError]);
 
   // 드롭다운 메뉴 표시
   const showDropdown = (e, menu) => {
@@ -295,39 +310,154 @@ const CompleteMBOMDashboard = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json,.xlsx,.csv';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (file) {
         showInfo(`${file.name} 파일을 여는 중...`);
-        // TODO: 파일 읽기 구현
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const fileContent = event.target.result;
+
+            if (file.name.endsWith('.json')) {
+              // JSON 파일 처리
+              const importedData = JSON.parse(fileContent);
+              loadBOMData(importedData);
+              showSuccess('JSON 파일을 성공적으로 불러왔습니다');
+            } else if (file.name.endsWith('.csv')) {
+              // CSV 파일 처리
+              const rows = fileContent.split('\n');
+              const headers = rows[0].split(',');
+              const data = rows.slice(1).map(row => {
+                const values = row.split(',');
+                const item = {};
+                headers.forEach((header, index) => {
+                  item[header.trim()] = values[index]?.trim();
+                });
+                return item;
+              });
+              loadBOMData(data);
+              showSuccess('CSV 파일을 성공적으로 불러왔습니다');
+            } else {
+              showWarning('지원하지 않는 파일 형식입니다');
+            }
+          } catch (error) {
+            showError('파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+          }
+        };
+
+        reader.readAsText(file);
       }
     };
     input.click();
   };
 
+  // Undo/Redo를 위한 히스토리 관리
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isUndoRedo, setIsUndoRedo] = useState(false);
+
+  // BOM 데이터 변경 시 히스토리에 추가
+  useEffect(() => {
+    if (!isUndoRedo && bomData.length > 0) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(JSON.parse(JSON.stringify(bomData)));
+
+      // 히스토리 최대 20개 유지
+      if (newHistory.length > 20) {
+        newHistory.shift();
+      }
+
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+    setIsUndoRedo(false);
+  }, [bomData]);
+
   const handleUndo = () => {
-    showInfo('실행 취소');
-    // TODO: Undo 기능 구현
+    if (historyIndex > 0) {
+      setIsUndoRedo(true);
+      const previousState = history[historyIndex - 1];
+      loadBOMData(previousState);
+      setHistoryIndex(historyIndex - 1);
+      showSuccess('실행 취소되었습니다');
+    } else {
+      showWarning('더 이상 실행 취소할 수 없습니다');
+    }
   };
 
   const handleRedo = () => {
-    showInfo('다시 실행');
-    // TODO: Redo 기능 구현
+    if (historyIndex < history.length - 1) {
+      setIsUndoRedo(true);
+      const nextState = history[historyIndex + 1];
+      loadBOMData(nextState);
+      setHistoryIndex(historyIndex + 1);
+      showSuccess('다시 실행되었습니다');
+    } else {
+      showWarning('더 이상 다시 실행할 수 없습니다');
+    }
   };
 
-  const handleCut = () => {
-    showInfo('잘라내기');
-    // TODO: Cut 기능 구현
+  const handleCut = async () => {
+    if (!selectedItem) {
+      showWarning('잘라낼 항목을 선택해주세요');
+      return;
+    }
+
+    try {
+      const dataToClip = JSON.stringify(selectedItem, null, 2);
+      await navigator.clipboard.writeText(dataToClip);
+
+      // 잘라내기는 복사 후 삭제
+      deleteBOMItem(selectedItem.id);
+      setSelectedItem(null);
+      showSuccess('항목이 잘라내기되었습니다');
+    } catch (error) {
+      showError('잘라내기에 실패했습니다');
+    }
   };
 
-  const handleCopy = () => {
-    showInfo('복사');
-    // TODO: Copy 기능 구현
+  const handleCopy = async () => {
+    if (!selectedItem) {
+      showWarning('복사할 항목을 선택해주세요');
+      return;
+    }
+
+    try {
+      const dataToClip = JSON.stringify(selectedItem, null, 2);
+      await navigator.clipboard.writeText(dataToClip);
+      showSuccess('항목이 클립보드에 복사되었습니다');
+    } catch (error) {
+      showError('복사에 실패했습니다');
+    }
   };
 
-  const handlePaste = () => {
-    showInfo('붙여넣기');
-    // TODO: Paste 기능 구현
+  const handlePaste = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const pastedData = JSON.parse(clipboardText);
+
+      // 새로운 ID로 붙여넣기
+      const newItem = {
+        ...pastedData,
+        id: Date.now(),
+        partNumber: pastedData.partNumber + '-COPY',
+        status: 'draft'
+      };
+
+      if (selectedItem) {
+        // 선택된 항목의 하위에 추가
+        addBOMItem(newItem, selectedItem.id);
+      } else {
+        // 루트 레벨에 추가
+        addBOMItem(newItem, null);
+      }
+
+      showSuccess('항목이 붙여넣기되었습니다');
+    } catch (error) {
+      showWarning('클립보드에 유효한 BOM 데이터가 없습니다');
+    }
   };
 
   const handleFind = () => {
@@ -337,9 +467,47 @@ const CompleteMBOMDashboard = () => {
     }
   };
 
+  const [showReplaceDialog, setShowReplaceDialog] = useState(false);
+  const [replaceValues, setReplaceValues] = useState({ find: '', replace: '' });
+
   const handleReplace = () => {
-    showInfo('바꾸기 기능');
-    // TODO: Replace 기능 구현
+    setShowReplaceDialog(true);
+  };
+
+  const executeReplace = () => {
+    const { find, replace } = replaceValues;
+    if (!find) {
+      showWarning('찾을 텍스트를 입력해주세요');
+      return;
+    }
+
+    let count = 0;
+    const updatedData = bomData.map(item => {
+      const updateItem = (obj) => {
+        let updated = false;
+        Object.keys(obj).forEach(key => {
+          if (typeof obj[key] === 'string' && obj[key].includes(find)) {
+            obj[key] = obj[key].replace(new RegExp(find, 'g'), replace);
+            updated = true;
+            count++;
+          }
+        });
+        if (obj.children && obj.children.length > 0) {
+          obj.children = obj.children.map(child => updateItem(child));
+        }
+        return obj;
+      };
+      return updateItem({ ...item });
+    });
+
+    if (count > 0) {
+      loadBOMData(updatedData);
+      showSuccess(`${count}개 항목이 바뀌었습니다`);
+      setShowReplaceDialog(false);
+      setReplaceValues({ find: '', replace: '' });
+    } else {
+      showWarning('일치하는 텍스트를 찾을 수 없습니다');
+    }
   };
 
   const handleToggleSidebar = () => {
@@ -350,8 +518,7 @@ const CompleteMBOMDashboard = () => {
   };
 
   const handleSettings = () => {
-    showInfo('설정 페이지');
-    // TODO: Settings 페이지 구현
+    setActiveTab('settings');
   };
 
   const handleAbout = () => {
@@ -408,12 +575,18 @@ const CompleteMBOMDashboard = () => {
       {/* Notification Banner */}
       {showNotificationBanner && (
         <div className="notification-banner show" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
           background: 'linear-gradient(90deg, #e74c3c, #c0392b)',
           color: 'white',
           padding: '10px 20px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          zIndex: 10000,
+          animation: 'bannerBlink 1.2s ease-in-out 0s 7'
         }}>
           <div className="notification-content">
             <span className="notification-icon">🔔</span>
@@ -434,6 +607,95 @@ const CompleteMBOMDashboard = () => {
       <div className="vscode-titlebar">
         <div className="vscode-title">M-BOM Management System - Enterprise Edition</div>
         <div className="window-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* 작성 상태 표시 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '4px 12px',
+            borderRadius: '4px',
+            background: documentStatus === 'draft' ? '#f39c12' :
+                       documentStatus === 'reviewing' ? '#3498db' :
+                       documentStatus === 'approved' ? '#27ae60' : '#e74c3c',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: '500'
+          }}>
+            {documentStatus === 'draft' ? <Edit className="w-3 h-3" /> :
+             documentStatus === 'reviewing' ? <Clock className="w-3 h-3" /> :
+             documentStatus === 'approved' ? <CheckCircle className="w-3 h-3" /> :
+             <FileText className="w-3 h-3" />}
+            <span>
+              {documentStatus === 'draft' ? '작성 중' :
+               documentStatus === 'reviewing' ? '검토 중' :
+               documentStatus === 'approved' ? '승인됨' : '반려됨'}
+            </span>
+            {pendingChanges.length > 0 && (
+              <span style={{
+                background: 'rgba(255, 255, 255, 0.3)',
+                padding: '2px 6px',
+                borderRadius: '10px',
+                fontSize: '11px'
+              }}>
+                {pendingChanges.length}
+              </span>
+            )}
+          </div>
+
+          {/* 작성 관리 버튼들 */}
+          <button
+            onClick={() => setShowDraftDialog(true)}
+            className="vscode-button"
+            style={{
+              padding: '4px 12px',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            title="작성 상태 관리"
+          >
+            <Edit className="w-3 h-3" />
+            작성 관리
+          </button>
+
+          {/* 결재 관리 버튼 */}
+          <button
+            onClick={() => setShowApprovalDialog(true)}
+            className="vscode-button"
+            style={{
+              padding: '4px 12px',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              position: 'relative'
+            }}
+            title="결재 승인 관리"
+          >
+            <FileText className="w-3 h-3" />
+            결재함
+            {approvalQueue.filter(r => r.status === 'pending').length > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                background: '#e74c3c',
+                color: 'white',
+                borderRadius: '50%',
+                width: '16px',
+                height: '16px',
+                fontSize: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold'
+              }}>
+                {approvalQueue.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </button>
+
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
@@ -705,7 +967,7 @@ const CompleteMBOMDashboard = () => {
                     )}
                   </div>
 
-                  {/* 메인 BOM 데이터 그리드 - Custom TreeGrid 사용 */}
+                  {/* 메인 BOM 데이터 그리드 - TreeGrid 사용 */}
                   <TreeGrid searchTerm={searchTerm} />
                 </div>
               </div>
@@ -844,7 +1106,7 @@ const CompleteMBOMDashboard = () => {
                         <div key={index} style={{
                           padding: '10px',
                           marginBottom: '10px',
-                          background: '#2d2d30',
+                          background: theme === 'dark' ? '#2d2d30' : '#f3f4f6',
                           borderLeft: `3px solid ${
                             change.type === 'added' ? '#27ae60' :
                             change.type === 'deleted' ? '#e74c3c' :
@@ -854,7 +1116,7 @@ const CompleteMBOMDashboard = () => {
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                              <span style={{ color: '#9cdcfe', marginRight: '10px' }}>{change.partNumber}</span>
+                              <span style={{ color: theme === 'dark' ? '#9cdcfe' : '#2563eb', marginRight: '10px' }}>{change.partNumber}</span>
                               <span style={{ color: theme === 'dark' ? '#969696' : '#6b7280' }}>
                                 {change.field}: {change.oldValue} → {change.newValue}
                               </span>
@@ -1017,6 +1279,43 @@ const CompleteMBOMDashboard = () => {
               <div style={{ height: '100%', width: '100%', display: 'flex' }}>
                 <div style={{ flex: 1, padding: '20px', overflow: 'auto', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
                   <h2>시스템 설정</h2>
+
+                  <div style={{ marginTop: '20px' }}>
+                    <h3>기본 설정</h3>
+                    <div style={{ background: theme === 'dark' ? '#252526' : '#f9fafb', padding: '15px', borderRadius: '6px' }}>
+                      <div style={{ marginBottom: '10px' }}>
+                        <label>사용자 이름</label>
+                        <input
+                          type="text"
+                          className="vscode-input"
+                          value={user?.name || ''}
+                          style={{ marginLeft: '10px', width: '200px' }}
+                          disabled
+                        />
+                      </div>
+                      <div style={{ marginBottom: '10px' }}>
+                        <label>테마</label>
+                        <select
+                          className="vscode-input"
+                          value={theme}
+                          onChange={(e) => toggleTheme()}
+                          style={{ marginLeft: '10px', width: '200px' }}
+                        >
+                          <option value="light">라이트 모드</option>
+                          <option value="dark">다크 모드</option>
+                        </select>
+                      </div>
+                      <div style={{ marginBottom: '10px' }}>
+                        <label>자동 저장 간격</label>
+                        <select className="vscode-input" style={{ marginLeft: '10px', width: '200px' }}>
+                          <option>1분</option>
+                          <option>5분</option>
+                          <option>10분</option>
+                          <option>수동</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
 
                   <div style={{ marginTop: '20px' }}>
                     <h3>알림 설정</h3>
@@ -1279,6 +1578,120 @@ const CompleteMBOMDashboard = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 작성 상태 관리 다이얼로그 */}
+      <DraftStatusDialog
+        isOpen={showDraftDialog}
+        onClose={() => setShowDraftDialog(false)}
+      />
+
+      {/* 결재 승인 관리 다이얼로그 */}
+      <ApprovalDialog
+        isOpen={showApprovalDialog}
+        onClose={() => setShowApprovalDialog(false)}
+      />
+
+      {/* Replace 다이얼로그 */}
+      {showReplaceDialog && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="modal" style={{
+            background: theme === 'dark' ? '#2d2d30' : '#ffffff',
+            borderRadius: '8px',
+            width: '500px',
+            padding: '20px'
+          }}>
+            <div className="modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ color: theme === 'dark' ? '#cccccc' : '#111827' }}>찾기 및 바꾸기</h3>
+              <button
+                onClick={() => setShowReplaceDialog(false)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
+                  찾을 텍스트:
+                </label>
+                <input
+                  type="text"
+                  className="vscode-input"
+                  value={replaceValues.find}
+                  onChange={(e) => setReplaceValues({ ...replaceValues, find: e.target.value })}
+                  style={{ width: '100%' }}
+                  placeholder="검색할 텍스트를 입력하세요"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', color: theme === 'dark' ? '#cccccc' : '#111827' }}>
+                  바꿀 텍스트:
+                </label>
+                <input
+                  type="text"
+                  className="vscode-input"
+                  value={replaceValues.replace}
+                  onChange={(e) => setReplaceValues({ ...replaceValues, replace: e.target.value })}
+                  style={{ width: '100%' }}
+                  placeholder="대체할 텍스트를 입력하세요"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  className="vscode-button secondary"
+                  onClick={() => setShowReplaceDialog(false)}
+                >
+                  취소
+                </button>
+                <button
+                  className="vscode-button"
+                  onClick={executeReplace}
+                >
+                  모두 바꾸기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Test Panels - Development Mode Only */}
+      {process.env.NODE_ENV === 'development' && (
+        <>
+          {showBOMRules && <BOMRulesGuide onClose={() => setShowBOMRules(false)} />}
+        </>
+      )}
+
+      {/* Test Toggle Buttons - Development Mode Only */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 left-4 flex flex-col gap-2">
+          <button
+            onClick={() => setShowBOMRules(!showBOMRules)}
+            className="p-2 bg-orange-500 text-white rounded-lg shadow-lg hover:bg-orange-600 transition-colors text-sm"
+            title="BOM 이동 규칙 가이드"
+          >
+            {showBOMRules ? '✓' : ''} BOM 규칙
+          </button>
         </div>
       )}
     </div>
