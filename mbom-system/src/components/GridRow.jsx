@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useBOM } from '../contexts/BOMContext';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTrackedBOM } from '../hooks/useTrackedBOM';
 import { useTheme } from '../contexts/ThemeContext';
 import { DrawingPreview } from './DrawingPreview';
 import EnhancedLevelIndicator from './level/EnhancedLevelIndicator';
@@ -8,25 +8,44 @@ import EnhancedLevelIndicator from './level/EnhancedLevelIndicator';
  * 그리드의 개별 행 컴포넌트
  * 인라인 편집, 펼침/접힘, 액션 버튼 포함
  */
-export const GridRow = ({ item, columns, isSelected, index, searchTerm = '', onContextMenu, onPreview }) => {
+export const GridRow = ({ item, columns, isSelected, index, searchTerm = '', onContextMenu, onPreview, onDragStart, onDragOver, onDragLeave, onDrop, isDragging, isRecentlyMoved }) => {
   const { theme } = useTheme();
   const {
     toggleExpanded,
     expandedIds,
     setSelected,
-    updateCell,
-    addSibling,
-    addChild,
-    deleteItem,
+    addSiblingTracked,
+    addChildTracked,
+    deleteItemTracked,
+    updateItemTracked,
     indent,
-    outdent
-  } = useBOM();
+    outdent,
+    moveAfter
+  } = useTrackedBOM();
 
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [isBlinking, setIsBlinking] = useState(false);
+  const rowRef = useRef(null);
 
   const isExpanded = expandedIds.has(item.id);
   const hasChildren = item.children.length > 0;
+
+  // 선택되었을 때 깜빡임 효과 및 스크롤
+  useEffect(() => {
+    if (isSelected && rowRef.current) {
+      // 스크롤하여 해당 행을 보이게 함
+      rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // 깜빡임 효과 시작
+      setIsBlinking(true);
+      const timer = setTimeout(() => {
+        setIsBlinking(false);
+      }, 2400); // 2.4초간 깜빡임 (0.6s * 4회)
+
+      return () => clearTimeout(timer);
+    }
+  }, [isSelected]);
 
   // 텍스트 하이라이트 함수
   const highlightText = (text, search) => {
@@ -59,10 +78,10 @@ export const GridRow = ({ item, columns, isSelected, index, searchTerm = '', onC
   // 셀 편집 완료
   const finishEdit = useCallback(() => {
     if (editingField) {
-      updateCell(item.id, editingField, editValue);
+      updateItemTracked(item.id, editingField, editValue);
       setEditingField(null);
     }
-  }, [editingField, editValue, item.id, updateCell]);
+  }, [editingField, editValue, item.id, updateItemTracked]);
 
   // 셀 편집 취소
   const cancelEdit = useCallback(() => {
@@ -87,24 +106,48 @@ export const GridRow = ({ item, columns, isSelected, index, searchTerm = '', onC
   const handleDelete = useCallback(() => {
     if (hasChildren) {
       if (confirm(`"${item.data.partName}"의 하위 항목까지 모두 삭제됩니다. 계속하시겠습니까?`)) {
-        deleteItem(item.id);
+        deleteItemTracked(item.id);
       }
     } else {
-      deleteItem(item.id);
+      deleteItemTracked(item.id);
     }
-  }, [item.id, item.data.partName, hasChildren, deleteItem]);
+  }, [item.id, item.data.partName, hasChildren, deleteItemTracked]);
 
   return (
     <tr
+      ref={rowRef}
       className={`
-        transition-colors
+        transition-all cursor-move relative
         ${theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}
-        ${isSelected ? (theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-100/50') : ''}
+        ${isSelected ? (theme === 'dark' ? 'bg-blue-700/40' : 'bg-blue-200/70') : ''}
         ${index % 2 === 0 ? (theme === 'dark' ? 'bg-gray-900/30' : 'bg-gray-50/50') : ''}
+        ${isDragging ? 'opacity-30 bg-yellow-500/20' : ''}
+        ${isRecentlyMoved ? 'animate-pulse' : ''}
       `}
+      style={{
+        ...(isDragging && {
+          boxShadow: '0 0 20px rgba(250, 204, 21, 0.5)',
+          border: '2px solid #facc15'
+        }),
+        ...(isRecentlyMoved && {
+          boxShadow: '0 0 15px rgba(34, 197, 94, 0.5)',
+          outline: '2px solid #22c55e',
+          outlineOffset: '-1px'
+        }),
+        ...(isBlinking && {
+          animation: 'rowBlink 0.6s ease-in-out 4'
+        })
+      }}
+      draggable="true"
+      onDragStart={(e) => onDragStart && onDragStart(e, item)}
+      onDragOver={(e) => onDragOver && onDragOver(e, item)}
+      onDragLeave={(e) => onDragLeave && onDragLeave(e)}
+      onDrop={(e) => onDrop && onDrop(e, item)}
       onContextMenu={(e) => {
+        console.log('GridRow onContextMenu triggered for item:', item.id);
         e.preventDefault();
         setSelected(item.id);
+        console.log('Calling parent onContextMenu');
         onContextMenu(e);
       }}
     >

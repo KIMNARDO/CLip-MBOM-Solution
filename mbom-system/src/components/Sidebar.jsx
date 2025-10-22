@@ -77,7 +77,11 @@ export const Sidebar = ({ searchTerm = '' }) => {
       <div key={item.id}>
         <div
           className={`sidebar-tree-item ${isSelected ? 'selected' : ''}`}
-          style={{ paddingLeft: `${item.level * 16 + 8}px` }}
+          style={{ paddingLeft: `${item.level * 16 + 8}px`, cursor: 'pointer' }}
+          onClick={() => {
+            console.log('Sidebar item clicked:', item.id);
+            setSelected(item.id);
+          }}
           onContextMenu={(e) => {
             e.preventDefault();
             setSelected(item.id);
