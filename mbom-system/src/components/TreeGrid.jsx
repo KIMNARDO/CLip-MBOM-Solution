@@ -1,11 +1,14 @@
 import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
-import { useBOM } from '../contexts/BOMContext';
+import { useTrackedBOM } from '../hooks/useTrackedBOM';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { GridRow } from './GridRow';
 import { ContextMenu } from './ContextMenu';
 import { HeaderContextMenu } from './HeaderContextMenu';
 import { ColumnManager } from './ColumnManager';
 import { DrawingPreview } from './DrawingPreview';
+import AddColumnDialog from './dialogs/AddColumnDialog';
+import ConfirmDialog from './dialogs/ConfirmDialog';
 
 /**
  * 트리 구조 데이터 그리드 컴포넌트
@@ -13,6 +16,7 @@ import { DrawingPreview } from './DrawingPreview';
  */
 export const TreeGrid = ({ searchTerm = '' }) => {
   const { theme } = useTheme();
+  const { showInfo, showWarning } = useNotification();
   const {
     visibleItems,
     columns: originalColumns,
@@ -21,8 +25,15 @@ export const TreeGrid = ({ searchTerm = '' }) => {
     expandToLevel,
     collapseFromLevel,
     expandAll,
-    collapseAll
-  } = useBOM();
+    collapseAll,
+    moveAfterTracked,
+    moveBeforeTracked,
+    copyItem,
+    pasteItem,
+    duplicateItem,
+    deleteItemTracked,
+    itemsById
+  } = useTrackedBOM();
 
   const [contextMenu, setContextMenu] = useState({ show: false, position: { x: 0, y: 0 }, itemId: null });
   const [headerContextMenu, setHeaderContextMenu] = useState({
@@ -37,8 +48,23 @@ export const TreeGrid = ({ searchTerm = '' }) => {
   const [showColumnManager, setShowColumnManager] = useState(false);
   const [resizing, setResizing] = useState(null);
   const [draggingColumn, setDraggingColumn] = useState(null);
+  const [draggingRow, setDraggingRow] = useState(null);
+  const [dragOverRow, setDragOverRow] = useState(null);
+  const [dragOverTarget, setDragOverTarget] = useState(null);
+  const [previewLevel, setPreviewLevel] = useState(null);
   const [drawingPreview, setDrawingPreview] = useState({ show: false, type: '', partNumber: '', partName: '' });
+  const [confirmDialog, setConfirmDialog] = useState({
+    show: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
+  const [pendingMove, setPendingMove] = useState(null);
   const [visibleLevels, setVisibleLevels] = useState(3); // 표시할 레벨 버튼 수
+  const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
+  const [recentlyMovedId, setRecentlyMovedId] = useState(null); // 최근 이동된 아이템 추적
   const tableRef = useRef(null);
 
   // 표시할 컬럼만 필터링 (순서 유지)
@@ -65,6 +91,24 @@ export const TreeGrid = ({ searchTerm = '' }) => {
       );
     });
   }, [visibleItems, searchTerm]);
+
+  // 디버깅: 레벨별 아이템 수 확인
+  useEffect(() => {
+    const levelCounts = {};
+    visibleItems.forEach(item => {
+      const level = item.level || 0;
+      levelCounts[level] = (levelCounts[level] || 0) + 1;
+    });
+    console.log('레벨별 아이템 수:', levelCounts);
+    console.log('전체 아이템:', visibleItems);
+  }, [visibleItems]);
+
+  // 초기 로드 시 모든 레벨 확장
+  useEffect(() => {
+    // 최대 레벨 3까지 확장
+    expandToLevel(3);
+  }, [expandToLevel]);
+
 
   // 컬럼 크기 조절 시작
   const handleMouseDown = useCallback((columnField, e) => {
@@ -106,6 +150,91 @@ export const TreeGrid = ({ searchTerm = '' }) => {
     }
   }, [resizing, handleMouseMove, handleMouseUp]);
 
+  // 키보드 단축키 처리
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl/Cmd + C: 복사
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedId) {
+        e.preventDefault();
+        const item = itemsById[selectedId];
+        if (item) {
+          const hasChildren = item.children && item.children.length > 0;
+          // Shift 키를 함께 누르면 자식 포함 복사
+          if (copyItem(selectedId, e.shiftKey && hasChildren)) {
+            const message = e.shiftKey && hasChildren
+              ? `"${item.data.partName}" 및 하위 항목들이 클립보드에 복사되었습니다.`
+              : `"${item.data.partName}"이(가) 클립보드에 복사되었습니다.`;
+            showInfo(message);
+          }
+        }
+      }
+
+      // Ctrl/Cmd + V: 붙여넣기
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && selectedId) {
+        e.preventDefault();
+        const copiedData = sessionStorage.getItem('copiedBOMItem');
+        if (copiedData) {
+          // Shift 키를 함께 누르면 강제로 레벨 변경하여 붙여넣기
+          if (pasteItem(selectedId, e.shiftKey)) {
+            const message = e.shiftKey
+              ? '항목이 다른 레벨로 붙여넣기되었습니다.'
+              : '항목이 붙여넣기되었습니다.';
+            showInfo(message);
+          } else {
+            showWarning('붙여넣기에 실패했습니다.');
+          }
+        }
+      }
+
+      // Ctrl/Cmd + D: 복제
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedId) {
+        e.preventDefault();
+        const item = itemsById[selectedId];
+        if (item) {
+          const hasChildren = item.children && item.children.length > 0;
+          // Shift 키를 함께 누르면 자식 포함 복제
+          duplicateItem(selectedId, e.shiftKey && hasChildren);
+          const message = e.shiftKey && hasChildren
+            ? `"${item.data.partName}" 및 하위 항목들이 복제되었습니다.`
+            : `"${item.data.partName}"이(가) 복제되었습니다.`;
+          showInfo(message);
+        }
+      }
+
+      // Delete: 삭제
+      if (e.key === 'Delete' && selectedId) {
+        e.preventDefault();
+        const item = itemsById[selectedId];
+        if (item) {
+          const hasChildren = item.children && item.children.length > 0;
+          setConfirmDialog({
+            show: true,
+            title: '항목 삭제 확인',
+            message: hasChildren
+              ? `"${item.data.partName}"의 하위 항목까지 모두 삭제됩니다.\n계속하시겠습니까?`
+              : `"${item.data.partName}"을(를) 삭제하시겠습니까?`,
+            type: 'danger',
+            confirmText: '삭제',
+            cancelText: '취소',
+            onConfirm: () => {
+              deleteItemTracked(selectedId);
+              showInfo(`"${item.data.partName}"이(가) 삭제되었습니다.`);
+              setConfirmDialog(prev => ({ ...prev, show: false }));
+            },
+            onCancel: () => {
+              setConfirmDialog(prev => ({ ...prev, show: false }));
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedId, itemsById, showInfo, showWarning, copyItem, pasteItem, duplicateItem, deleteItemTracked]);
+
   // 컬럼 드래그 시작
   const handleDragStart = useCallback((e, columnField) => {
     const index = columns.findIndex(col => col.field === columnField);
@@ -144,6 +273,318 @@ export const TreeGrid = ({ searchTerm = '' }) => {
     return false;
   }, [draggingColumn, columns]);
 
+  // 행 드래그 시작
+  const handleRowDragStart = useCallback((e, item) => {
+    console.log('🎯 Drag start:', {
+      id: item.id,
+      name: item.data.partName,
+      level: item.level,
+      parentId: item.parentId,
+      partNumber: item.data.partNumber
+    });
+    setDraggingRow(item);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.id);
+    // 드래그 이미지 설정
+    const dragImage = e.currentTarget.cloneNode(true);
+    dragImage.style.opacity = '0.5';
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-1000px';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, e.clientX - e.currentTarget.getBoundingClientRect().left, 20);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  }, []);
+
+  // 행 드래그 오버
+  const handleRowDragOver = useCallback((e, targetItem) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    // 드래그 중인 아이템이 있을 때만 예상 레벨 계산
+    if (draggingRow && targetItem) {
+      setDragOverTarget(targetItem);
+
+      // 예상 레벨 계산
+      let expectedLevel = draggingRow.level;
+
+      // 같은 레벨인 경우 유지
+      if (draggingRow.level === targetItem.level) {
+        expectedLevel = draggingRow.level;
+      }
+      // 아이템이 바로 위 부모 레벨로 이동하는 경우 (자식 포함 가능)
+      else if (draggingRow.level === targetItem.level + 1) {
+        // Level 2 → Level 1 부모
+        if (draggingRow.level === 2 && targetItem.level === 1) {
+          expectedLevel = 2; // Level 2 유지
+        }
+        // Level 3 → Level 2 부모
+        else if (draggingRow.level === 3 && targetItem.level === 2) {
+          expectedLevel = 3; // Level 3 유지
+        }
+        // Level 1 → Level 0 부모
+        else if (draggingRow.level === 1 && targetItem.level === 0) {
+          expectedLevel = 1; // Level 1 유지
+        }
+        else {
+          expectedLevel = null; // 이동 불가
+        }
+      }
+      else {
+        expectedLevel = null; // 이동 불가
+      }
+
+      setPreviewLevel(expectedLevel);
+    }
+
+    // 드래그 오버 색상
+    let borderColor = '#4facfe'; // 파란색
+
+    // 드래그 오버 표시
+    if (e.currentTarget.tagName === 'TR') {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const height = rect.height;
+
+      // 위쪽 절반에 있으면 위에 표시, 아래쪽 절반에 있으면 아래에 표시
+      if (y < height / 2) {
+        e.currentTarget.style.borderTop = `3px solid ${borderColor}`;
+        e.currentTarget.style.borderBottom = '';
+      } else {
+        e.currentTarget.style.borderTop = '';
+        e.currentTarget.style.borderBottom = `3px solid ${borderColor}`;
+      }
+
+      // 배경색 변경
+      e.currentTarget.style.backgroundColor = 'rgba(79, 172, 254, 0.1)';
+    }
+  }, [draggingRow]);
+
+  // 행 드래그 리브
+  const handleRowDragLeave = useCallback((e) => {
+    if (e.currentTarget.tagName === 'TR') {
+      e.currentTarget.style.borderTop = '';
+      e.currentTarget.style.borderBottom = '';
+      e.currentTarget.style.backgroundColor = ''; // 배경색 초기화
+    }
+    setDragOverTarget(null);
+    setPreviewLevel(null);
+  }, []);
+
+  // 행 드롭
+  const handleRowDrop = useCallback((e, targetItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 드래그 오버 스타일 제거
+    if (e.currentTarget.tagName === 'TR') {
+      e.currentTarget.style.borderTop = '';
+      e.currentTarget.style.borderBottom = '';
+      e.currentTarget.style.backgroundColor = ''; // 배경색 초기화
+    }
+
+    console.log('🔄 TreeGrid Version: 2.0 - Multi-level movement enabled');
+    console.log('📍 Drop target:', {
+      id: targetItem.id,
+      name: targetItem.data.partName,
+      level: targetItem.level,
+      parentId: targetItem.parentId,
+      partNumber: targetItem.data.partNumber
+    });
+    console.log('📦 Dragging item:', draggingRow ? {
+      id: draggingRow.id,
+      name: draggingRow.data.partName,
+      level: draggingRow.level,
+      parentId: draggingRow.parentId,
+      partNumber: draggingRow.data.partNumber
+    } : null);
+
+    if (draggingRow && draggingRow.id !== targetItem.id) {
+      // 자기 자신의 자손으로 이동하는 것은 방지 (순환 참조 방지)
+      const isDescendant = (parentId, childId) => {
+        if (!parentId) return false;
+        const parent = itemsById[parentId];
+        if (!parent) return false;
+        if (parent.id === childId) return true;
+        return parent.children.some(c => isDescendant(c, childId));
+      };
+
+      if (isDescendant(draggingRow.id, targetItem.id)) {
+        console.log('❌ 자기 자신의 하위로는 이동할 수 없습니다');
+        showWarning('자기 자신의 하위 항목으로는 이동할 수 없습니다.');
+        setDraggingRow(null);
+        return;
+      }
+
+      // 드롭 위치에 따라 이동 방식 결정
+      const rect = e.currentTarget.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const height = rect.height;
+      const dropPosition = y < height / 2 ? 'before' : 'after';
+
+      console.log('Drop position:', dropPosition, 'Y:', y, 'Height:', height);
+
+      // BOM 설계 원칙에 따른 이동 규칙 결정
+      const draggingLevel = draggingRow.level;
+      const targetLevel = targetItem.level;
+      const targetParentId = targetItem.parentId;
+      const hasChildren = draggingRow.children && draggingRow.children.length > 0;
+
+      // 실제 이동 위치를 정확하게 파악
+      let destinationLevel = targetLevel; // 기본적으로 타겟과 같은 레벨
+      let destinationParentId = targetParentId; // 기본적으로 타겟과 같은 부모
+
+      let newLevel = draggingLevel; // 기본적으로 현재 레벨 유지
+      let newParentId = null;
+      let moveBefore = dropPosition === 'before';
+      let moveAsChild = false;
+      let validMove = true;
+      let warningMessage = '';
+
+      // 디버깅: 실제 이동 위치 확인
+      console.log('🎯 이동 분석:', {
+        draggingItem: draggingRow.data.partNumber,
+        draggingLevel: draggingLevel,
+        targetItem: targetItem.data.partNumber,
+        targetLevel: targetLevel,
+        targetParent: targetParentId,
+        dropPosition: dropPosition
+      });
+
+      // 기본 이동 규칙 적용
+      // 일반 드래그는 타겟과 같은 위치(형제)로 이동
+      destinationLevel = targetLevel;
+      destinationParentId = targetParentId;
+
+      // 같은 레벨끼리 이동 (자식 여부 무관)
+      if (draggingLevel === destinationLevel) {
+          newLevel = draggingLevel; // 레벨 유지
+          newParentId = destinationParentId; // 타겟과 같은 부모
+
+          console.log('✅ 같은 레벨 이동:', {
+            from: `Level ${draggingLevel}`,
+            to: `Level ${destinationLevel}`,
+            newParent: destinationParentId
+          });
+        }
+        // 다른 레벨로 이동 시도
+        else {
+          // Level 2 아이템이 Level 1 부모로 이동하는 경우 - 자동으로 자식이 됨 (자식 포함 가능)
+          if (draggingLevel === 2 && destinationLevel === 1) {
+            // Level 2는 Level 1의 자식이 되는 것이 자연스러운 계층 구조
+            newLevel = 2; // Level 2 유지
+            newParentId = targetItem.id; // 타겟 Level 1이 부모가 됨
+            moveAsChild = true;
+            moveBefore = false;
+
+            console.log('✅ Level 2 → Level 1 부모로 이동 (자식 포함):', {
+              item: draggingRow.data.partNumber,
+              newParent: targetItem.data.partNumber,
+              level: 'Level 2 유지',
+              withChildren: hasChildren
+            });
+          }
+          // Level 3 아이템이 Level 2 부모로 이동하는 경우 - 자동으로 자식이 됨 (자식 포함 가능)
+          else if (draggingLevel === 3 && destinationLevel === 2) {
+            // Level 3는 Level 2의 자식이 되는 것이 자연스러운 계층 구조
+            newLevel = 3; // Level 3 유지
+            newParentId = targetItem.id; // 타겟 Level 2가 부모가 됨
+            moveAsChild = true;
+            moveBefore = false;
+
+            console.log('✅ Level 3 → Level 2 부모로 이동 (자식 포함):', {
+              item: draggingRow.data.partNumber,
+              newParent: targetItem.data.partNumber,
+              level: 'Level 3 유지',
+              withChildren: hasChildren
+            });
+          }
+          // Level 1 아이템이 Level 0 부모로 이동하는 경우 - 자동으로 자식이 됨 (자식 포함 가능)
+          else if (draggingLevel === 1 && destinationLevel === 0) {
+            // Level 1은 Level 0의 자식이 되는 것이 자연스러운 계층 구조
+            newLevel = 1; // Level 1 유지
+            newParentId = targetItem.id; // 타겟 Level 0이 부모가 됨
+            moveAsChild = true;
+            moveBefore = false;
+
+            console.log('✅ Level 1 → Level 0 부모로 이동 (자식 포함):', {
+              item: draggingRow.data.partNumber,
+              newParent: targetItem.data.partNumber,
+              level: 'Level 1 유지',
+              withChildren: hasChildren
+            });
+          }
+          // 그 외의 경우는 레벨 변경 불가
+          else {
+            validMove = false;
+            // 더 명확한 메시지로 변경
+            warningMessage = `Level ${draggingLevel} 아이템을 Level ${destinationLevel} 위치로 직접 이동할 수 없습니다.`;
+          }
+        }
+
+      // 부모가 자식 레벨이 될 수 없는지 검증
+      if (validMove && hasChildren && newLevel > draggingLevel) {
+        validMove = false;
+        warningMessage = '자식이 있는 부모는 더 낮은 레벨(자식 레벨)로 이동할 수 없습니다.';
+      }
+
+      // 이동 불가능한 경우 경고 표시
+      if (!validMove) {
+        console.log('❌ 이동 불가:', warningMessage);
+        showWarning(warningMessage);
+        setDraggingRow(null);
+        setDragOverRow(null);
+        return;
+      }
+
+      console.log('✅ 아이템 이동:', {
+        from: draggingRow.data.partNumber,
+        to: targetItem.data.partNumber,
+        fromLevel: draggingLevel,
+        toLevel: newLevel,
+        levelChange: draggingLevel !== newLevel ? `Level ${draggingLevel} → Level ${newLevel}` : 'Level 유지',
+        fromParent: draggingRow.parentId,
+        toParent: newParentId,
+        moveAsChild: moveAsChild,
+        moveBefore: moveBefore,
+        hasChildren: hasChildren,
+        childCount: draggingRow.children ? draggingRow.children.length : 0
+      });
+
+      // moveAfterTracked에 새 레벨과 새 부모 전달
+      if (moveAsChild) {
+        // 타겟의 자식으로 이동하는 경우
+        moveAfterTracked(draggingRow.id, null, newLevel, newParentId);
+        showInfo(`"${draggingRow.data.partName}"을(를) "${targetItem.data.partName}"의 자식으로 이동했습니다.`);
+      } else if (moveBefore) {
+        // 타겟 앞으로 이동
+        moveBeforeTracked(draggingRow.id, targetItem.id, newLevel, newParentId);
+        if (draggingLevel !== newLevel) {
+          showInfo(`"${draggingRow.data.partName}"을(를) Level ${draggingLevel}에서 Level ${newLevel}로 이동했습니다.`);
+        } else {
+          showInfo(`"${draggingRow.data.partName}"을(를) "${targetItem.data.partName}" 앞으로 이동했습니다.`);
+        }
+      } else {
+        // 타겟 뒤로 이동
+        moveAfterTracked(draggingRow.id, targetItem.id, newLevel, newParentId);
+        if (draggingLevel !== newLevel) {
+          showInfo(`"${draggingRow.data.partName}"을(를) Level ${draggingLevel}에서 Level ${newLevel}로 이동했습니다.`);
+        } else {
+          showInfo(`"${draggingRow.data.partName}"을(를) "${targetItem.data.partName}" 뒤로 이동했습니다.`);
+        }
+      }
+
+      // 이동 완료된 아이템 하이라이트
+      setRecentlyMovedId(draggingRow.id);
+      // 3초 후 하이라이트 제거
+      setTimeout(() => {
+        setRecentlyMovedId(null);
+      }, 3000);
+    }
+
+    setDraggingRow(null);
+    setDragOverRow(null);
+  }, [draggingRow, moveAfterTracked, moveBeforeTracked, showInfo, showWarning, itemsById]);
+
   // 도면 미리보기 핸들러
   const handlePreview = useCallback((type, partNumber, partName) => {
     setDrawingPreview({ show: true, type, partNumber, partName });
@@ -153,6 +594,15 @@ export const TreeGrid = ({ searchTerm = '' }) => {
   const handleDeleteColumn = useCallback((columnField) => {
     // visibleColumns에서 제거
     setVisibleColumns(prev => prev.filter(field => field !== columnField));
+  }, []);
+
+  // 컬럼 추가 핸들러
+  const handleAddColumn = useCallback((newColumn) => {
+    // 새 컬럼을 columns에 추가
+    setColumns(prev => [...prev, newColumn]);
+    // 새 컬럼을 visibleColumns에도 추가
+    setVisibleColumns(prev => [...prev, newColumn.field]);
+    setShowAddColumnDialog(false);
   }, []);
 
   // 헤더 우클릭 핸들러
@@ -225,7 +675,7 @@ export const TreeGrid = ({ searchTerm = '' }) => {
     displayColumns.forEach((col, idx) => {
       const group = getColumnGroup(col.field);
 
-      // rowSpan이 2인 독립 컬럼들
+      // 특정 독립 컬럼들은 항상 rowSpan=2로 처리
       if (['partName', 'image', 'type', 'remarks', 'quantity'].includes(col.field)) {
         // 그룹이 있었다면 종료
         if (currentGroup) {
@@ -296,6 +746,37 @@ export const TreeGrid = ({ searchTerm = '' }) => {
                  onMouseDown={(e) => handleMouseDown(col.field, e)} />
           </th>
         );
+      } else {
+        // 그룹에 속하지 않고 특정 필드도 아닌 경우 (새로 추가된 컬럼 등)
+        // 그룹이 있었다면 종료
+        if (currentGroup) {
+          topHeaders.push(
+            <th key={currentGroup.title}
+                colSpan={groupColCount}
+                className={`px-2 py-1 border text-center ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'} ${currentGroup.bgColor || ''}`}>
+              {currentGroup.title}
+            </th>
+          );
+          currentGroup = null;
+          groupColCount = 0;
+        }
+
+        // rowSpan 2인 독립 헤더로 추가
+        topHeaders.push(
+          <th key={col.field}
+              rowSpan="2"
+              className={`px-2 py-1 border text-center relative cursor-move group transition-colors ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700/50' : 'border-gray-300 hover:bg-gray-200/50'}`}
+              style={{ width: col.width || 100 }}
+              draggable="true"
+              onDragStart={(e) => handleDragStart(e, col.field)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, col.field)}
+              onContextMenu={(e) => handleHeaderContextMenu(e, col.field)}>
+            {col.header}
+            <div className={`absolute right-0 top-0 h-full w-1 cursor-col-resize ${theme === 'dark' ? 'hover:bg-blue-500' : 'hover:bg-blue-400'}`}
+                 onMouseDown={(e) => handleMouseDown(col.field, e)} />
+          </th>
+        );
       }
     });
 
@@ -316,7 +797,9 @@ export const TreeGrid = ({ searchTerm = '' }) => {
   const { topHeaders, bottomHeaders } = renderHeaders();
 
   return (
-    <div className={`flex-1 overflow-auto ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`} ref={tableRef}>
+    <div className={`flex-1 overflow-auto relative ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}
+         ref={tableRef}
+         style={{ maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', overflowX: 'auto' }}>
       <div className="min-w-full">
         <table
           className="w-full border-collapse"
@@ -403,6 +886,12 @@ export const TreeGrid = ({ searchTerm = '' }) => {
                   index={index}
                   searchTerm={searchTerm}
                   onPreview={handlePreview}
+                  onDragStart={handleRowDragStart}
+                  onDragOver={handleRowDragOver}
+                  onDragLeave={handleRowDragLeave}
+                  onDrop={handleRowDrop}
+                  isDragging={draggingRow?.id === item.id}
+                  isRecentlyMoved={recentlyMovedId === item.id}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setContextMenu({
@@ -425,6 +914,7 @@ export const TreeGrid = ({ searchTerm = '' }) => {
         itemId={contextMenu.itemId}
         onClose={() => setContextMenu({ show: false, position: { x: 0, y: 0 }, itemId: null })}
         onColumnManager={() => setShowColumnManager(true)}
+        onAddColumn={() => setShowAddColumnDialog(true)}
       />
 
       {/* 헤더 컨텍스트 메뉴 */}
@@ -445,6 +935,7 @@ export const TreeGrid = ({ searchTerm = '' }) => {
         onColumnManager={() => setShowColumnManager(true)}
         onAutoFit={handleAutoFitColumn}
         onResetWidth={handleResetColumnWidth}
+        onAddColumn={() => setShowAddColumnDialog(true)}
       />
 
       {/* 컬럼 관리 다이얼로그 */}
@@ -463,6 +954,26 @@ export const TreeGrid = ({ searchTerm = '' }) => {
         partNumber={drawingPreview.partNumber}
         partName={drawingPreview.partName}
         onClose={() => setDrawingPreview({ show: false, type: '', partNumber: '', partName: '' })}
+      />
+
+      {/* 열 추가 다이얼로그 */}
+      <AddColumnDialog
+        isOpen={showAddColumnDialog}
+        onClose={() => setShowAddColumnDialog(false)}
+        onAddColumn={handleAddColumn}
+        existingColumns={columns}
+      />
+
+      {/* 확인 대화상자 */}
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={confirmDialog.onCancel}
       />
     </div>
   );
