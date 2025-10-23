@@ -1,13 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { useBOMData } from '../contexts/BOMDataContext';
+import { useTrackedBOM } from '../hooks/useTrackedBOM';
 import { useNotification } from '../contexts/NotificationContext';
 import * as XLSX from 'xlsx';
 
 const ExcelSync = ({ onClose }) => {
   const { theme } = useTheme();
-  const { bomData, setBOMData } = useBOMData();
+  const { visibleItems, setFromExcelTracked, itemsById } = useTrackedBOM();
   const { showSuccess, showError, showWarning } = useNotification();
   const fileInputRef = useRef(null);
   const [processing, setProcessing] = useState(false);
@@ -198,14 +198,31 @@ const ExcelSync = ({ onClose }) => {
   const applyData = () => {
     if (!preview) return;
 
-    setBOMData(preview);
+    setFromExcelTracked(preview);
     showSuccess('Excel 데이터가 성공적으로 적용되었습니다.');
     onClose();
   };
 
   // 현재 데이터를 Excel로 내보내기
   const exportCurrentData = () => {
-    const flatData = flattenBOMData(bomData);
+    // visibleItems를 Excel 형식으로 변환
+    const flatData = visibleItems.map(item => ({
+      level: item.level,
+      partNumber: item.data.partNumber,
+      partName: item.data.partName,
+      quantity: item.data.quantity,
+      unit: item.data.unit,
+      material: item.data.material,
+      weight: item.data.weight,
+      supplier: item.data.supplier,
+      cost: item.data.cost,
+      leadTime: item.data.leadTime,
+      status: item.data.status,
+      notes: item.data.notes,
+      icon: item.data.icon,
+      operation: item.data.operation,
+      workcenter: item.data.workcenter
+    }));
 
     const ws = XLSX.utils.json_to_sheet(flatData);
     const wb = XLSX.utils.book_new();

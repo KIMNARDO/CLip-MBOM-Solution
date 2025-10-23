@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Eye, EyeOff, Package, Sun, Moon } from 'lucide-react';
+import { Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import buildingImg from '/building.jpg'; // DSC 동림연구소 건물 이미지
 
 const Login = () => {
@@ -109,17 +109,6 @@ const Login = () => {
         <div className="max-w-md w-full">
           {/* Logo and Title */}
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
-              <div className={`p-5 rounded-2xl shadow-2xl backdrop-blur-md ${
-                isDark
-                  ? 'bg-gray-800/80 border border-gray-700/50'
-                  : 'bg-white/90 border border-gray-200/50'
-              }`}>
-                <Package className={`w-16 h-16 ${
-                  isDark ? 'text-blue-400' : 'text-blue-600'
-                }`} />
-              </div>
-            </div>
             <h1 className={`text-5xl font-bold mb-3 ${
               isDark
                 ? 'text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]'
@@ -139,7 +128,7 @@ const Login = () => {
                 ? 'text-gray-300'
                 : 'text-gray-700'
             }`}>
-              FabsNet EPL Solution
+              (주)팹스넷 CLip Solution
             </p>
           </div>
 
@@ -279,14 +268,14 @@ const Login = () => {
 
           {/* Footer */}
           <div className={`text-center mt-8 text-sm ${
-            isDark ? 'text-gray-300' : 'text-gray-700'
+            isDark ? 'text-white-300' : 'text-white-700'
           }`}>
-            <p className="font-medium">© 2024 FabsNet. All rights reserved.</p>
-            <p className="mt-1">EPL Multi-BOM System v1.0</p>
+            <p className="font-medium">© 2025 Papsnet Clip Solution. All rights reserved.</p>
+            <p className="mt-1">CLIP Multi-BOM System v1.0</p>
             <p className={`mt-2 text-xs ${
-              isDark ? 'text-gray-400' : 'text-gray-600'
+              isDark ? 'text-white-400' : 'text-white-600'
             }`}>
-              DSC동림연구소 - Enterprise PLM Solution
+              DSC동탄연구소 - POC Solution TEST
             </p>
           </div>
         </div>

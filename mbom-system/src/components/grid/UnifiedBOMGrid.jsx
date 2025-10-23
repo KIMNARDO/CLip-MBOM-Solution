@@ -1,15 +1,33 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getExpandedRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  flexRender,
+  createColumnHelper
+} from '@tanstack/react-table';
 import { useBOMData } from '../../contexts/BOMDataContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import EnhancedLevelIndicator from '../level/EnhancedLevelIndicator';
+import AddColumnDialog from '../dialogs/AddColumnDialog';
+import {
+  ChevronRight,
+  ChevronDown,
+  Edit,
+  Save,
+  X,
+  Plus,
+  Trash2,
+  Copy,
+  Move
+} from 'lucide-react';
 
 /**
  * UnifiedBOMGrid - 통합 BOM 그리드 컴포넌트
- * ag-Grid Enterprise의 모든 기능을 활용하는 단일 통합 컴포넌트
+ * TanStack Table (React Table)을 사용하는 통합 컴포넌트
  */
 const UnifiedBOMGrid = ({
   data,
@@ -17,7 +35,6 @@ const UnifiedBOMGrid = ({
   onCellEditingStarted,
   onCellEditingStoppedCallback
 }) => {
-  const gridRef = useRef();
   const {
     updateBOMItem,
     addBOMItem,
@@ -30,459 +47,575 @@ const UnifiedBOMGrid = ({
   } = useBOMData();
   const { showSuccess, showWarning, showError, showInfo } = useNotification();
   const { theme: appTheme } = useTheme();
-  const gridTheme = appTheme === 'dark' ? 'ag-theme-alpine-dark' : 'ag-theme-alpine';
 
-  const [gridApiState, setGridApiState] = useState(null);
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [quickFilter, setQuickFilter] = useState('');
+  const [expanded, setExpanded] = useState({});
+  const [selectedRows, setSelectedRows] = useState({});
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
 
-  // Tree Data 변환 함수
-  const convertToTreeData = useCallback((items, parentPath = []) => {
+  // 트리 데이터 평탄화 함수
+  const flattenTree = useCallback((items, parent = null, depth = 0) => {
     if (!items || !Array.isArray(items)) return [];
 
-    const result = [];
-    items.forEach(item => {
-      const currentPath = [...parentPath, item.partNumber];
-
-      // ag-Grid Tree Data 구조로 변환
-      const treeItem = {
+    return items.reduce((acc, item) => {
+      const flatItem = {
         ...item,
-        path: currentPath,
-        orgHierarchy: currentPath,
-        // Tree 레벨은 path 길이로 자동 계산
-        treeLevel: currentPath.length - 1
+        depth,
+        parent,
+        subRows: item.children ? flattenTree(item.children, item.id, depth + 1) : []
       };
-
-      result.push(treeItem);
-
-      // 자식 요소 재귀 처리
-      if (item.children && item.children.length > 0) {
-        const childrenData = convertToTreeData(item.children, currentPath);
-        result.push(...childrenData);
-      }
-    });
-
-    return result;
+      return [...acc, flatItem];
+    }, []);
   }, []);
 
-  // 그리드 데이터 준비
-  const rowData = useMemo(() => {
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      return [];
+  // 평탄화된 데이터
+  const tableData = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
+    return flattenTree(data);
+  }, [data, flattenTree]);
+
+  // 편집 시작
+  const startEditing = useCallback((rowId, field, value) => {
+    setEditingCell({ rowId, field });
+    setEditValue(value || '');
+    if (onCellEditingStarted) {
+      onCellEditingStarted({ rowId, field, value });
     }
+  }, [onCellEditingStarted]);
 
-    const treeData = convertToTreeData(data);
-    return treeData;
-  }, [data, convertToTreeData]);
-
-  // 컬럼 정의 (동적 컬럼 포함)
-  const columnDefs = useMemo(() => {
-    const columns = [
-    {
-      headerName: '',
-      field: 'selection',
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      width: 50,
-      pinned: 'left'
-    },
-    {
-      headerName: 'Level',
-      field: 'level',
-      width: 120,
-      pinned: 'left',
-      cellRenderer: params => {
-        if (!params.data) return null;
-
-        return React.createElement(EnhancedLevelIndicator, {
-          level: params.value || 0,
-          hasChildren: params.data.children && params.data.children.length > 0,
-          isExpanded: params.node.expanded,
-          onToggle: () => {
-            params.node.setExpanded(!params.node.expanded);
-          },
-          partType: params.data.partType,
-          itemCount: params.data.children ? params.data.children.length : 0,
-          criticalPath: params.data.criticalPath,
-          changeStatus: params.data.diff_status
+  // 편집 저장
+  const saveEdit = useCallback(() => {
+    if (editingCell) {
+      updateBOMItem(editingCell.rowId, { [editingCell.field]: editValue });
+      showSuccess('항목이 업데이트되었습니다');
+      if (onCellEditingStoppedCallback) {
+        onCellEditingStoppedCallback({
+          rowId: editingCell.rowId,
+          field: editingCell.field,
+          value: editValue
         });
-      },
-      autoHeight: true
-    },
-    {
-      headerName: '품번',
-      field: 'partNumber',
-      width: 200,
-      editable: true,
-      cellEditor: 'agTextCellEditor',
-      cellClassRules: {
-        'modified-cell': params => params.data.changed,
-        'error-cell': params => params.data.hasError
       }
-    },
-    {
-      headerName: '품명',
-      field: 'description',
-      width: 250,
-      editable: true,
-      cellEditor: 'agLargeTextCellEditor',
-      cellEditorParams: {
-        maxLength: 200,
-        rows: 3,
-        cols: 50
-      }
-    },
-    {
-      headerName: 'U/S',
-      field: 'quantity',
-      width: 100,
-      editable: params => params.data.level !== 0,
-      cellEditor: 'agNumberCellEditor',
-      cellEditorParams: {
-        min: 0,
-        max: 9999
-      },
-      valueParser: params => Number(params.newValue),
-      cellClass: 'numeric-cell'
-    },
-    {
-      headerName: '단위',
-      field: 'unit',
-      width: 80,
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['EA', 'SET', 'PCS', 'KG', 'L', 'M']
-      }
-    },
-    {
-      headerName: '작업장',
-      field: 'workcenter',
-      width: 150,
-      editable: true,
-      cellEditor: 'agRichSelectCellEditor',
-      cellEditorParams: {
-        values: ['제조1팀', '제조2팀', '조립1팀', '조립2팀', '품질팀', '포장팀']
-      }
-    },
-    {
-      headerName: '공급업체',
-      field: 'supplier',
-      width: 150,
-      editable: true,
-      enableRowGroup: true
-    },
-    {
-      headerName: '리드타임',
-      field: 'leadtime',
-      width: 100,
-      editable: true,
-      cellEditor: 'agNumberCellEditor',
-      valueParser: params => Number(params.newValue),
-      cellClass: 'numeric-cell'
-    },
-    {
-      headerName: '단가',
-      field: 'cost',
-      width: 120,
-      editable: true,
-      cellEditor: 'agNumberCellEditor',
-      valueFormatter: params => params.value ? `₩${params.value.toLocaleString()}` : '',
-      cellClass: 'numeric-cell'
-    },
-    {
-      headerName: '상태',
-      field: 'status',
-      width: 100,
-      cellEditor: 'agRichSelectCellEditor',
-      cellEditorParams: {
-        values: ['approved', 'review', 'draft', 'rejected']
-      },
-      cellClassRules: {
-        'status-approved': params => params.value === 'approved',
-        'status-review': params => params.value === 'review',
-        'status-draft': params => params.value === 'draft',
-        'status-rejected': params => params.value === 'rejected'
-      }
-    },
-    {
-      headerName: 'ECO#',
-      field: 'eco',
-      width: 100,
-      editable: true
-    },
-    {
-      headerName: '비고',
-      field: 'remarks',
-      width: 200,
-      editable: true,
-      cellEditor: 'agLargeTextCellEditor'
+      setEditingCell(null);
+      setEditValue('');
     }
-  ];
+  }, [editingCell, editValue, updateBOMItem, showSuccess, onCellEditingStoppedCallback]);
 
-  // 동적 컬럼 추가
-  const dynamicColumns = customColumns ? customColumns.map(col => ({
-    headerName: col.headerName,
-    field: col.field,
-    editable: col.editable !== false,
-    width: col.width || 150,
-    cellEditor: col.type === 'number' ? 'agNumberCellEditor' :
-                col.type === 'date' ? 'agDateCellEditor' :
-                col.type === 'boolean' ? 'agCheckboxCellEditor' :
-                'agTextCellEditor'
-  })) : [];
+  // 편집 취소
+  const cancelEdit = useCallback(() => {
+    setEditingCell(null);
+    setEditValue('');
+  }, []);
 
-  return [...columns, ...dynamicColumns];
-  }, [customColumns]);
+  // 드래그 시작
+  const handleDragStart = useCallback((e, item) => {
+    setDraggedItem(item);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
 
-  // 기본 컬럼 설정
-  const defaultColDef = useMemo(() => ({
-    sortable: true,
-    filter: true,
-    resizable: true,
-    floatingFilter: true,
-    menuTabs: ['filterMenuTab', 'generalMenuTab', 'columnsMenuTab'],
-    minWidth: 80
-  }), []);
+  // 드래그 오버
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
 
-  // Grid Options
-  const gridOptions = useMemo(() => ({
+  // 드롭
+  const handleDrop = useCallback((e, targetItem) => {
+    e.preventDefault();
 
-    // 편집 설정
-    editType: 'fullRow',
-    stopEditingWhenCellsLoseFocus: true,
-    undoRedoCellEditing: true,
-    undoRedoCellEditingLimit: 20,
-
-    // 선택 설정
-    rowSelection: 'multiple',
-    rowMultiSelectWithClick: true,
-
-    // 드래그 설정
-    rowDragManaged: true,
-    animateRows: true,
-
-    // 성능 설정
-    rowBuffer: 10,
-    rowModelType: 'clientSide',
-
-    // 스타일 설정
-    rowHeight: 35,
-    headerHeight: 40,
-
-    // 페이지네이션 설정 (Community Edition)
-    pagination: true,
-    paginationPageSize: 50,
-    paginationPageSizeSelector: [20, 50, 100, 200]
-  }), []);
-
-  // Grid Ready 이벤트
-  const onGridReady = useCallback(params => {
-    const api = params.api;
-    setGridApiState(api);
-
-    // Context에 Grid API 등록
-    if (setGridApi) {
-      setGridApi(api);
-    }
-
-    // 초기 확장 상태 적용
-    if (expandedNodeIds) {
-      setTimeout(() => {
-        api.forEachNode((node) => {
-          if (node.data && expandedNodeIds.has(node.data.id)) {
-            api.setRowNodeExpanded(node, true);
-          }
-        });
-      }, 100);
-    }
-
-    // Check if data is loaded
-    const rowCount = api.getDisplayedRowCount();
-
-    params.api.sizeColumnsToFit();
-  }, [expandedNodeIds, setGridApi]);
-
-  // Row expanded event handler (양방향 동기화)
-  const onRowGroupOpened = useCallback((params) => {
-    if (params.node && params.node.data && toggleNodeExpanded) {
-      toggleNodeExpanded(params.node.data.id, params.node.expanded);
-    }
-  }, [toggleNodeExpanded]);
-
-  // 셀 편집 완료 이벤트
-  const onCellEditingStoppedHandler = useCallback(params => {
-    if (params.oldValue !== params.newValue) {
-      const updatedItem = {
-        ...params.data,
-        [params.column.colId]: params.newValue,
-        changed: true
-      };
-
-      updateBOMItem(params.data.id, updatedItem);
-      showSuccess(`${params.column.colId} 필드가 업데이트되었습니다`);
-    }
-
-    // 외부 콜백 호출
-    if (onCellEditingStoppedCallback) {
-      onCellEditingStoppedCallback(params);
-    }
-  }, [updateBOMItem, showSuccess, onCellEditingStoppedCallback]);
-
-  // 행 선택 변경 이벤트
-  const onSelectionChangedHandler = useCallback(() => {
-    const selectedNodes = gridRef.current.api.getSelectedNodes();
-    const selectedData = selectedNodes.map(node => node.data);
-    setSelectedRows(selectedData);
-
-    if (onSelectionChanged) {
-      onSelectionChanged(selectedData);
-    }
-  }, [onSelectionChanged]);
-
-  // 행 드래그 종료 이벤트
-  const onRowDragEnd = useCallback(params => {
-    const { node, overNode } = params;
-
-    if (!overNode) {
+    if (!draggedItem || !targetItem) {
       showWarning('올바른 위치로 드래그해주세요');
       return;
     }
 
-    moveItem(node.data.id, overNode.data.id);
-    showSuccess('항목이 이동되었습니다');
-  }, [moveItem, showSuccess, showWarning]);
-
-  // 빠른 필터 적용
-  useEffect(() => {
-    if (gridApiState && gridApiState.setGridOption) {
-      gridApiState.setGridOption('quickFilterText', quickFilter);
+    // 레벨 체크
+    if (draggedItem.level !== targetItem.level) {
+      showWarning(`같은 레벨끼리만 이동할 수 있습니다. (현재: Level ${draggedItem.level}, 대상: Level ${targetItem.level})`);
+      return;
     }
-  }, [quickFilter, gridApiState]);
 
-  // 컨텍스트 메뉴
-  const getContextMenuItems = useCallback(params => {
-    const result = [
+    // 이동 실행
+    moveItem(draggedItem.id, targetItem.id);
+    showSuccess(`항목이 Level ${draggedItem.level} 내에서 이동되었습니다`);
+    setDraggedItem(null);
+  }, [draggedItem, moveItem, showSuccess, showWarning]);
+
+  // 컬럼 정의
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
-        name: '복사',
-        action: () => {
-          const selectedData = params.api.getSelectedRows();
-          navigator.clipboard.writeText(JSON.stringify(selectedData, null, 2));
-          showInfo('선택한 항목이 클립보드에 복사되었습니다');
-        },
-        icon: '<span class="ag-icon ag-icon-copy"></span>'
+        id: 'selection',
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            checked={table.getIsAllRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            className="w-4 h-4"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            className="w-4 h-4"
+          />
+        ),
+        size: 40
       },
       {
-        name: '붙여넣기',
-        disabled: params.node.data.level === 0,
-        action: () => {
-          showInfo('붙여넣기 기능은 준비 중입니다');
+        id: 'expander',
+        header: '',
+        cell: ({ row }) => {
+          if (!row.original.children || row.original.children.length === 0) {
+            return <span className="w-6 inline-block" />;
+          }
+          return (
+            <button
+              onClick={row.getToggleExpandedHandler()}
+              className="p-0 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            >
+              {row.getIsExpanded() ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+          );
         },
-        icon: '<span class="ag-icon ag-icon-paste"></span>'
+        size: 40
       },
-      'separator',
       {
-        name: '하위 항목 추가',
-        action: () => {
-          const newItem = {
-            id: Date.now(),
-            level: params.node.data.level + 1,
-            partNumber: 'NEW-PART-' + Date.now(),
-            description: '새 부품',
-            quantity: 1,
-            unit: 'EA',
-            status: 'draft'
+        accessorKey: 'level',
+        header: 'Level',
+        cell: ({ row }) => (
+          <EnhancedLevelIndicator
+            level={row.original.level}
+            style={{ marginLeft: `${row.depth * 20}px` }}
+          />
+        ),
+        size: 120
+      },
+      {
+        accessorKey: 'partNumber',
+        header: 'Part Number',
+        cell: ({ row, getValue }) => {
+          const isEditing = editingCell?.rowId === row.original.id && editingCell?.field === 'partNumber';
+
+          if (isEditing) {
+            return (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit();
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  className="px-2 py-1 border rounded w-full"
+                  autoFocus
+                />
+                <button onClick={saveEdit} className="p-1 hover:bg-green-100 rounded">
+                  <Save className="w-3 h-3 text-green-600" />
+                </button>
+                <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                  <X className="w-3 h-3 text-red-600" />
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              className="flex items-center justify-between group cursor-move"
+              draggable
+              onDragStart={(e) => handleDragStart(e, row.original)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, row.original)}
+              onDoubleClick={() => startEditing(row.original.id, 'partNumber', getValue())}
+            >
+              <span>{getValue()}</span>
+              <button
+                onClick={() => startEditing(row.original.id, 'partNumber', getValue())}
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
+              >
+                <Edit className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        },
+        size: 200
+      },
+      {
+        accessorKey: 'description',
+        header: 'Description',
+        cell: ({ row, getValue }) => {
+          const isEditing = editingCell?.rowId === row.original.id && editingCell?.field === 'description';
+
+          if (isEditing) {
+            return (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit();
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  className="px-2 py-1 border rounded w-full"
+                  autoFocus
+                />
+                <button onClick={saveEdit} className="p-1 hover:bg-green-100 rounded">
+                  <Save className="w-3 h-3 text-green-600" />
+                </button>
+                <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                  <X className="w-3 h-3 text-red-600" />
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              className="flex items-center justify-between group"
+              onDoubleClick={() => startEditing(row.original.id, 'description', getValue())}
+            >
+              <span>{getValue()}</span>
+              <button
+                onClick={() => startEditing(row.original.id, 'description', getValue())}
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
+              >
+                <Edit className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        },
+        size: 300
+      },
+      {
+        accessorKey: 'quantity',
+        header: 'Quantity',
+        cell: ({ row, getValue }) => {
+          const isEditing = editingCell?.rowId === row.original.id && editingCell?.field === 'quantity';
+
+          if (isEditing) {
+            return (
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit();
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  className="px-2 py-1 border rounded w-20"
+                  autoFocus
+                />
+                <button onClick={saveEdit} className="p-1 hover:bg-green-100 rounded">
+                  <Save className="w-3 h-3 text-green-600" />
+                </button>
+                <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                  <X className="w-3 h-3 text-red-600" />
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div
+              className="flex items-center justify-between group"
+              onDoubleClick={() => startEditing(row.original.id, 'quantity', getValue())}
+            >
+              <span>{getValue()}</span>
+              <button
+                onClick={() => startEditing(row.original.id, 'quantity', getValue())}
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
+              >
+                <Edit className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        },
+        size: 100
+      },
+      {
+        accessorKey: 'unit',
+        header: 'Unit',
+        size: 80
+      },
+      {
+        accessorKey: 'material',
+        header: 'Material',
+        size: 150
+      },
+      {
+        accessorKey: 'weight',
+        header: 'Weight (kg)',
+        size: 100
+      },
+      {
+        accessorKey: 'supplier',
+        header: 'Supplier',
+        size: 150
+      },
+      {
+        accessorKey: 'cost',
+        header: 'Cost',
+        cell: ({ getValue }) => {
+          const value = getValue();
+          return value ? `₩${value.toLocaleString()}` : '';
+        },
+        size: 120
+      },
+      {
+        accessorKey: 'leadTime',
+        header: 'Lead Time',
+        cell: ({ getValue }) => {
+          const value = getValue();
+          return value ? `${value} days` : '';
+        },
+        size: 100
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ getValue }) => {
+          const status = getValue();
+          const statusColors = {
+            approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            review: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+            draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+            rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
           };
-          addBOMItem(newItem, params.node.data.id);
-          showSuccess('새 항목이 추가되었습니다');
+
+          return (
+            <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status] || ''}`}>
+              {status}
+            </span>
+          );
         },
-        icon: '<span class="ag-icon ag-icon-plus"></span>'
+        size: 100
       },
       {
-        name: '삭제',
-        disabled: params.node.data.level === 0,
-        action: () => {
-          deleteBOMItem(params.node.data.id);
-          showSuccess('항목이 삭제되었습니다');
-        },
-        icon: '<span class="ag-icon ag-icon-minus"></span>'
-      },
-      'separator',
-      'export',
-      'autoSizeAll'
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                const newItem = {
+                  partNumber: '',
+                  description: 'New Item',
+                  quantity: 1,
+                  unit: 'EA',
+                  status: 'draft'
+                };
+                addBOMItem(row.original.id, newItem);
+                showSuccess('새 항목이 추가되었습니다');
+              }}
+              className="p-1 hover:bg-blue-100 rounded"
+              title="Add Child"
+            >
+              <Plus className="w-4 h-4 text-blue-600" />
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(JSON.stringify(row.original, null, 2));
+                showSuccess('항목이 복사되었습니다');
+              }}
+              className="p-1 hover:bg-gray-100 rounded"
+              title="Copy"
+            >
+              <Copy className="w-4 h-4 text-gray-600" />
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('정말로 이 항목을 삭제하시겠습니까?')) {
+                  deleteBOMItem(row.original.id);
+                  showSuccess('항목이 삭제되었습니다');
+                }
+              }}
+              className="p-1 hover:bg-red-100 rounded"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4 text-red-600" />
+            </button>
+          </div>
+        ),
+        size: 120
+      }
     ];
 
-    return result;
-  }, [addBOMItem, deleteBOMItem, showSuccess, showInfo]);
+    // 커스텀 컬럼 추가
+    if (customColumns && customColumns.length > 0) {
+      customColumns.forEach(col => {
+        baseColumns.push({
+          accessorKey: col.field,
+          header: col.headerName,
+          size: col.width || 150,
+          cell: ({ row, getValue }) => {
+            const isEditing = editingCell?.rowId === row.original.id && editingCell?.field === col.field;
 
-  // Excel Export
-  const exportToExcel = useCallback(() => {
-    gridRef.current.api.exportDataAsExcel({
-      fileName: `BOM_Export_${new Date().toISOString().split('T')[0]}.xlsx`,
-      sheetName: 'BOM Data',
-      author: 'M-BOM System',
-      processCellCallback: params => {
-        if (params.column.colId === 'cost' && params.value) {
-          return params.value;
-        }
-        return params.value;
-      }
-    });
-    showSuccess('Excel 파일로 내보내기가 완료되었습니다');
-  }, [showSuccess]);
+            if (isEditing) {
+              return (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEdit();
+                      if (e.key === 'Escape') cancelEdit();
+                    }}
+                    className="px-2 py-1 border rounded w-full"
+                    autoFocus
+                  />
+                  <button onClick={saveEdit} className="p-1 hover:bg-green-100 rounded">
+                    <Save className="w-3 h-3 text-green-600" />
+                  </button>
+                  <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                    <X className="w-3 h-3 text-red-600" />
+                  </button>
+                </div>
+              );
+            }
 
+            return (
+              <div
+                className="flex items-center justify-between group"
+                onDoubleClick={() => startEditing(row.original.id, col.field, getValue())}
+              >
+                <span>{getValue()}</span>
+                <button
+                  onClick={() => startEditing(row.original.id, col.field, getValue())}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
+                >
+                  <Edit className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          }
+        });
+      });
+    }
+
+    return baseColumns;
+  }, [customColumns, editingCell, editValue, saveEdit, cancelEdit, startEditing,
+      addBOMItem, deleteBOMItem, showSuccess, handleDragStart, handleDragOver, handleDrop]);
+
+  // 테이블 인스턴스
+  const table = useReactTable({
+    data: tableData,
+    columns,
+    state: {
+      expanded,
+      rowSelection: selectedRows,
+      globalFilter
+    },
+    onExpandedChange: setExpanded,
+    onRowSelectionChange: setSelectedRows,
+    onGlobalFilterChange: setGlobalFilter,
+    getSubRows: row => row.subRows,
+    getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    enableRowSelection: true,
+    enableMultiRowSelection: true
+  });
+
+  // 선택 변경 시 콜백
+  useEffect(() => {
+    if (onSelectionChanged) {
+      const selected = table.getSelectedRowModel().rows.map(row => row.original);
+      onSelectionChanged(selected);
+    }
+  }, [selectedRows, table, onSelectionChanged]);
 
   return (
-    <div className="unified-bom-grid" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className={`h-full flex flex-col ${appTheme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
       {/* 툴바 */}
-      <div className="grid-toolbar">
-        <input
-          type="text"
-          placeholder="빠른 검색..."
-          className="vscode-input"
-          value={quickFilter}
-          onChange={e => setQuickFilter(e.target.value)}
-          style={{ width: '250px' }}
-        />
-        <button
-          onClick={exportToExcel}
-          className="vscode-button"
-        >
-          Excel 내보내기
-        </button>
-        <button
-          onClick={() => gridApiState?.expandAll()}
-          className="vscode-button secondary"
-        >
-          모두 펼치기
-        </button>
-        <button
-          onClick={() => gridApiState?.collapseAll()}
-          className="vscode-button secondary"
-        >
-          모두 접기
-        </button>
-        <span className="grid-status-text" style={{ marginLeft: 'auto' }}>
-          선택: {selectedRows.length}개 / 전체: {rowData.length}개
-        </span>
+      <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Search..."
+            className="px-3 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+          />
+          <button
+            onClick={() => setShowAddColumnDialog(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Add Column
+          </button>
+        </div>
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          {table.getFilteredRowModel().rows.length} items
+        </div>
       </div>
 
-      {/* 그리드 */}
-      <div className={`${gridTheme} flex-1`} style={{ height: 'calc(100% - 50px)', width: '100%' }}>
-        <AgGridReact
-          ref={gridRef}
-          rowData={rowData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          {...gridOptions}
-          onGridReady={onGridReady}
-          onCellEditingStopped={onCellEditingStoppedHandler}
-          onSelectionChanged={onSelectionChangedHandler}
-          onRowDragEnd={onRowDragEnd}
-          onRowGroupOpened={onRowGroupOpened}
-          getContextMenuItems={getContextMenuItems}
-        />
+      {/* 테이블 */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10">
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th
+                    key={header.id}
+                    className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 border-b dark:border-gray-700"
+                    style={{ width: header.getSize() }}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map(row => (
+              <tr
+                key={row.id}
+                className={`border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800
+                  ${row.getIsSelected() ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+              >
+                {row.getVisibleCells().map(cell => (
+                  <td
+                    key={cell.id}
+                    className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100"
+                    style={{ width: cell.column.getSize() }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      {/* 컬럼 추가 다이얼로그 */}
+      {showAddColumnDialog && (
+        <AddColumnDialog
+          onClose={() => setShowAddColumnDialog(false)}
+          onAdd={(column) => {
+            // 컬럼 추가 로직
+            setShowAddColumnDialog(false);
+          }}
+        />
+      )}
     </div>
   );
 };

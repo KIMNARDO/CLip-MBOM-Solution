@@ -925,57 +925,511 @@ export const BOMProvider = ({ children }) => {
     });
   }, []);
 
-  // 같은 부모 내에서 순서 이동
-  const moveAfter = useCallback((id, afterId) => {
+  // M-BOM 레벨 이동 - 타겟 앞으로
+  const moveBefore = useCallback((id, beforeId, newLevel = null, newParentId = null) => {
+    setState(prev => {
+      const item = prev.itemsById[id];
+      const beforeItem = prev.itemsById[beforeId];
+
+      if (!item || !beforeItem) {
+        console.error('Item not found:', !item ? id : beforeId);
+        return prev;
+      }
+
+      // 자기 자신으로는 이동할 수 없음
+      if (id === beforeId) {
+        console.log('Cannot move item before itself');
+        return prev;
+      }
+
+      const newItemsById = { ...prev.itemsById };
+      let newRootIds = [...prev.rootIds];
+      const newExpandedIds = new Set(prev.expandedIds);
+
+      // 목표 레벨과 부모 (newParentId가 명시적으로 제공되면 그것을 사용, 아니면 beforeItem의 부모 사용)
+      const targetLevel = newLevel !== null ? newLevel : beforeItem.level;
+      const targetParentId = newParentId !== null ? newParentId : beforeItem.parentId;
+
+      console.log('Moving item BEFORE:', {
+        id,
+        beforeId,
+        currentLevel: item.level,
+        targetLevel,
+        targetParentId
+      });
+
+      // 1. 원래 위치에서 제거
+      if (item.parentId) {
+        const oldParent = newItemsById[item.parentId];
+        if (oldParent) {
+          const updatedOldParent = {
+            ...oldParent,
+            children: oldParent.children.filter(childId => childId !== id)
+          };
+          newItemsById[item.parentId] = updatedOldParent;
+        }
+      } else {
+        newRootIds = newRootIds.filter(rootId => rootId !== id);
+      }
+
+      // 2. 새 위치에 추가 (beforeItem 앞)
+      const currentItem = newItemsById[id] || item;
+
+      // 루트 레벨로 이동
+      if (targetLevel === 0) {
+        newItemsById[id] = { ...currentItem, parentId: null, level: 0 };
+        const beforeIndex = newRootIds.indexOf(beforeId);
+        if (beforeIndex >= 0) {
+          newRootIds.splice(beforeIndex, 0, id);
+        } else {
+          newRootIds.unshift(id);
+        }
+      }
+      // 자식 레벨로 이동
+      else if (targetParentId) {
+        const newParent = newItemsById[targetParentId];
+        if (newParent) {
+          newItemsById[id] = { ...currentItem, parentId: targetParentId, level: targetLevel };
+
+          const updatedNewParent = { ...newParent };
+          if (!updatedNewParent.children) {
+            updatedNewParent.children = [];
+          }
+
+          // 중복 제거 후 beforeItem 앞에 추가
+          updatedNewParent.children = updatedNewParent.children.filter(cId => cId !== id);
+          const beforeIndex = updatedNewParent.children.indexOf(beforeId);
+          if (beforeIndex >= 0) {
+            updatedNewParent.children.splice(beforeIndex, 0, id);
+          } else {
+            updatedNewParent.children.unshift(id);
+          }
+
+          newItemsById[targetParentId] = updatedNewParent;
+          newExpandedIds.add(targetParentId);
+        }
+      }
+
+      // 자식들의 레벨 재계산
+      if (item.children && item.children.length > 0) {
+        const recalculateChildLevels = (parentId, parentLevel) => {
+          const parent = newItemsById[parentId];
+          if (parent && parent.children) {
+            parent.children.forEach(childId => {
+              const child = newItemsById[childId];
+              if (child) {
+                newItemsById[childId] = { ...child, level: parentLevel + 1 };
+                recalculateChildLevels(childId, parentLevel + 1);
+              }
+            });
+          }
+        };
+        recalculateChildLevels(id, targetLevel);
+      }
+
+      return {
+        ...prev,
+        itemsById: newItemsById,
+        rootIds: newRootIds,
+        expandedIds: newExpandedIds
+      };
+    });
+  }, []);
+
+  // M-BOM 레벨 이동 - 타겟 뒤로
+  const moveAfter = useCallback((id, afterId, newLevel = null, newParentId = null) => {
+    setState(prev => {
+      const item = prev.itemsById[id];
+      const afterItem = afterId ? prev.itemsById[afterId] : null;
+
+      if (!item) {
+        console.error('Item not found:', id);
+        return prev;
+      }
+
+      // 자기 자신으로는 이동할 수 없음
+      if (id === afterId) {
+        console.log('Cannot move item after itself');
+        return prev;
+      }
+
+      const newItemsById = { ...prev.itemsById };
+      let newRootIds = [...prev.rootIds];
+      const newExpandedIds = new Set(prev.expandedIds);
+
+      // 레벨 변경이 필요한 경우
+      const targetLevel = newLevel !== null ? newLevel : (afterItem ? afterItem.level : item.level);
+
+      console.log('Moving item:', {
+        id,
+        afterId,
+        currentLevel: item.level,
+        targetLevel,
+        newParentId,
+        currentParent: item.parentId
+      });
+
+      // 1. 원래 위치에서 제거
+      if (item.parentId) {
+        const oldParent = newItemsById[item.parentId];
+        if (oldParent) {
+          const updatedOldParent = {
+            ...oldParent,
+            children: oldParent.children.filter(childId => childId !== id)
+          };
+          newItemsById[item.parentId] = updatedOldParent;
+        }
+      } else {
+        newRootIds = newRootIds.filter(rootId => rootId !== id);
+      }
+
+      // 2. 새 위치에 추가
+      // 새 부모 결정
+      let targetParentId = newParentId;
+
+      if (!targetParentId && afterItem) {
+        // 같은 레벨로 이동하는 경우
+        if (targetLevel === afterItem.level) {
+          targetParentId = afterItem.parentId;
+        }
+        // 자식 레벨로 이동하는 경우 (afterItem이 부모가 됨)
+        else if (targetLevel === afterItem.level + 1) {
+          targetParentId = afterItem.id;
+        }
+        // 부모 레벨로 이동하는 경우
+        else if (targetLevel === afterItem.level - 1) {
+          // afterItem의 부모의 부모를 찾아야 함
+          const afterItemParent = afterItem.parentId ? newItemsById[afterItem.parentId] : null;
+          targetParentId = afterItemParent ? afterItemParent.parentId : null;
+        }
+      }
+
+      console.log('Determined targetParentId:', targetParentId);
+
+      // 3. 아이템의 새 위치 설정
+      const currentItem = newItemsById[id] || item;
+
+      // 루트 레벨로 이동하는 경우
+      if (targetLevel === 0) {
+        newItemsById[id] = { ...currentItem, parentId: null, level: 0 };
+
+        // 루트 배열에 추가
+        if (afterItem) {
+          const afterIndex = newRootIds.indexOf(afterId);
+          if (afterIndex >= 0) {
+            newRootIds.splice(afterIndex + 1, 0, id);
+          } else {
+            newRootIds.push(id);
+          }
+        } else {
+          newRootIds.unshift(id);
+        }
+      }
+      // 자식 레벨로 이동하는 경우
+      else if (targetParentId) {
+        const newParent = newItemsById[targetParentId];
+        if (newParent) {
+          // 아이템 업데이트
+          newItemsById[id] = { ...currentItem, parentId: targetParentId, level: targetLevel };
+
+          // 부모의 children 배열 업데이트
+          const updatedNewParent = { ...newParent };
+          if (!updatedNewParent.children) {
+            updatedNewParent.children = [];
+          }
+
+          // 중복 제거 후 추가
+          updatedNewParent.children = updatedNewParent.children.filter(cId => cId !== id);
+
+          if (newParentId && !afterId) {
+            // 명시적 부모 지정 시 맨 앞에 추가
+            updatedNewParent.children.unshift(id);
+          } else if (afterItem && targetLevel === afterItem.level) {
+            // 같은 레벨에서 순서 조정
+            const afterIndex = updatedNewParent.children.indexOf(afterId);
+            if (afterIndex >= 0) {
+              updatedNewParent.children.splice(afterIndex + 1, 0, id);
+            } else {
+              updatedNewParent.children.push(id);
+            }
+          } else {
+            // 기본: 맨 뒤에 추가
+            updatedNewParent.children.push(id);
+          }
+
+          newItemsById[targetParentId] = updatedNewParent;
+
+          // 부모를 펼침
+          newExpandedIds.add(targetParentId);
+        }
+      }
+      else {
+        console.error('Cannot determine target parent for level', targetLevel);
+        return prev;
+      }
+
+      // 자식들의 레벨 재계산
+      if (item.children && item.children.length > 0) {
+        const recalculateChildLevels = (parentId, parentLevel) => {
+          const parent = newItemsById[parentId];
+          if (parent && parent.children) {
+            parent.children.forEach(childId => {
+              const child = newItemsById[childId];
+              if (child) {
+                newItemsById[childId] = { ...child, level: parentLevel + 1 };
+                recalculateChildLevels(childId, parentLevel + 1);
+              }
+            });
+          }
+        };
+        recalculateChildLevels(id, targetLevel);
+      }
+
+      // 이동 완료 확인
+      const movedItem = newItemsById[id];
+      console.log('Move completed. Item still exists:', !!movedItem);
+      if (movedItem) {
+        console.log('Moved item details:', {
+          id: movedItem.id,
+          parentId: movedItem.parentId,
+          level: movedItem.level,
+          partName: movedItem.data?.partName
+        });
+      } else {
+        console.error('ERROR: Item disappeared after move!', id);
+      }
+
+      return {
+        ...prev,
+        itemsById: newItemsById,
+        rootIds: newRootIds,
+        expandedIds: newExpandedIds
+      };
+    });
+  }, []);
+
+  // 항목 복제 (같은 위치에 동일한 데이터로 새 항목 생성) - 자식 포함 옵션 추가
+  const duplicateItem = useCallback((id, includeChildren = false) => {
+    let resultId = null;
     setState(prev => {
       const item = prev.itemsById[id];
       if (!item) return prev;
 
-      if (item.parentId) {
-        // 부모가 있는 경우
-        const parent = { ...prev.itemsById[item.parentId] };
-        const children = [...parent.children];
-        const currentIndex = children.indexOf(id);
+      const newItemsById = { ...prev.itemsById };
+      let newRootIds = [...prev.rootIds];
+      const newExpandedIds = new Set(prev.expandedIds);
 
-        if (currentIndex === -1) return prev;
+      // 재귀적으로 아이템과 자식들을 복제
+      const duplicateRecursive = (sourceId, parentId = null, level = 0) => {
+        const source = prev.itemsById[sourceId];
+        if (!source) return null;
 
-        children.splice(currentIndex, 1); // 현재 위치에서 제거
-
-        if (afterId === null) {
-          children.unshift(id); // 맨 앞으로
-        } else {
-          const afterIndex = children.indexOf(afterId);
-          if (afterIndex === -1) return prev;
-          children.splice(afterIndex + 1, 0, id); // afterId 다음에 삽입
-        }
-
-        parent.children = children;
-
-        return {
-          ...prev,
-          itemsById: { ...prev.itemsById, [item.parentId]: parent }
+        const newId = uid();
+        const newItem = {
+          id: newId,
+          parentId: parentId,
+          level: level,
+          data: {
+            ...source.data,
+            partNumber: `${source.data.partNumber}-COPY-${Date.now()}`,
+            partName: `${source.data.partName} (복사본)`
+          },
+          children: []
         };
-      } else {
-        // 루트 레벨인 경우
-        const rootIds = [...prev.rootIds];
-        const currentIndex = rootIds.indexOf(id);
 
-        if (currentIndex === -1) return prev;
+        newItemsById[newId] = newItem;
 
-        rootIds.splice(currentIndex, 1);
-
-        if (afterId === null) {
-          rootIds.unshift(id);
-        } else {
-          const afterIndex = rootIds.indexOf(afterId);
-          if (afterIndex === -1) return prev;
-          rootIds.splice(afterIndex + 1, 0, id);
+        // 자식 복제 (includeChildren이 true인 경우)
+        if (includeChildren && source.children.length > 0) {
+          source.children.forEach(childId => {
+            const newChildId = duplicateRecursive(childId, newId, level + 1);
+            if (newChildId) {
+              newItem.children.push(newChildId);
+            }
+          });
+          // 자식이 있는 항목은 자동으로 펼침
+          newExpandedIds.add(newId);
         }
 
-        return { ...prev, rootIds };
+        return newId;
+      };
+
+      // 복제 실행
+      const newId = duplicateRecursive(id, item.parentId, item.level);
+      resultId = newId;
+
+      // 부모가 있는 경우
+      if (item.parentId) {
+        const parent = { ...newItemsById[item.parentId] };
+        const itemIndex = parent.children.indexOf(id);
+        parent.children.splice(itemIndex + 1, 0, newId); // 원본 바로 뒤에 추가
+        newItemsById[item.parentId] = parent;
       }
+
+      // 루트인 경우
+      if (!item.parentId) {
+        const itemIndex = newRootIds.indexOf(id);
+        newRootIds.splice(itemIndex + 1, 0, newId);
+      }
+
+      return {
+        ...prev,
+        itemsById: newItemsById,
+        rootIds: newRootIds,
+        expandedIds: newExpandedIds
+      };
     });
+    return resultId;
   }, []);
+
+  // 항목 복사 (클립보드에 저장) - 자식 포함 옵션 추가
+  const copyItem = useCallback((id, includeChildren = false) => {
+    const item = state.itemsById[id];
+    if (item) {
+      const copiedData = {
+        data: item.data,
+        level: item.level,
+        includeChildren: includeChildren
+      };
+
+      // 자식 포함 복사인 경우
+      if (includeChildren && item.children.length > 0) {
+        const collectChildren = (nodeId) => {
+          const node = state.itemsById[nodeId];
+          if (!node) return null;
+
+          return {
+            data: node.data,
+            level: node.level,
+            children: node.children.map(childId => collectChildren(childId)).filter(Boolean)
+          };
+        };
+
+        copiedData.childrenData = item.children.map(childId => collectChildren(childId)).filter(Boolean);
+      }
+
+      sessionStorage.setItem('copiedBOMItem', JSON.stringify(copiedData));
+      return true;
+    }
+    return false;
+  }, [state.itemsById]);
+
+  // 항목 붙여넣기 - 다른 레벨로도 가능하도록 개선
+  const pasteItem = useCallback((targetId, forceLevel = false) => {
+    const copiedData = sessionStorage.getItem('copiedBOMItem');
+    if (!copiedData) return false;
+
+    const { data, level, includeChildren, childrenData } = JSON.parse(copiedData);
+    const targetItem = state.itemsById[targetId];
+
+    if (!targetItem) return false;
+
+    let success = false;
+    setState(prev => {
+      const newItemsById = { ...prev.itemsById };
+      let newRootIds = [...prev.rootIds];
+      const newExpandedIds = new Set(prev.expandedIds);
+
+      // 새 항목 생성 함수
+      const createItem = (itemData, parentId, itemLevel) => {
+        const newId = uid();
+        const newItem = {
+          id: newId,
+          data: {
+            ...itemData,
+            partNumber: `${itemData.partNumber}-${Date.now()}` // 중복 방지
+          },
+          level: itemLevel,
+          parentId: parentId,
+          children: []
+        };
+        newItemsById[newId] = newItem;
+        return newId;
+      };
+
+      // 자식 포함 붙여넣기 처리
+      const pasteWithChildren = (parentData, childrenList, parentId, baseLevel) => {
+        const parentNewId = createItem(parentData, parentId, baseLevel);
+
+        if (childrenList && childrenList.length > 0) {
+          childrenList.forEach(child => {
+            const childNewId = pasteWithChildren(
+              child.data,
+              child.children,
+              parentNewId,
+              baseLevel + 1
+            );
+            newItemsById[parentNewId].children.push(childNewId);
+          });
+          // 자식이 있는 항목은 자동으로 펼침
+          newExpandedIds.add(parentNewId);
+        }
+
+        return parentNewId;
+      };
+
+      // 대상 레벨 결정
+      const targetLevel = forceLevel ? targetItem.level : level;
+
+      // 리프 노드이거나 forceLevel이 true인 경우 다른 레벨로도 붙여넣기 가능
+      const isLeafNode = !includeChildren || !childrenData || childrenData.length === 0;
+
+      if (isLeafNode || forceLevel) {
+        let newId;
+
+        if (includeChildren && childrenData) {
+          // 자식 포함 붙여넣기
+          newId = pasteWithChildren(data, childrenData, targetItem.parentId, targetLevel);
+        } else {
+          // 단일 항목 붙여넣기
+          newId = createItem(data, targetItem.parentId, targetLevel);
+        }
+
+        // 타겟 아이템 뒤에 추가
+        if (targetItem.parentId) {
+          const parent = newItemsById[targetItem.parentId];
+          const targetIndex = parent.children.indexOf(targetId);
+          parent.children.splice(targetIndex + 1, 0, newId);
+        } else {
+          // 루트 레벨
+          const targetIndex = newRootIds.indexOf(targetId);
+          newRootIds.splice(targetIndex + 1, 0, newId);
+        }
+      } else if (targetItem.level === level) {
+        // 같은 레벨로 붙여넣기 (기존 로직)
+        let newId;
+
+        if (includeChildren && childrenData) {
+          newId = pasteWithChildren(data, childrenData, targetItem.parentId, level);
+        } else {
+          newId = createItem(data, targetItem.parentId, level);
+        }
+
+        // 타겟 아이템 뒤에 추가
+        if (targetItem.parentId) {
+          const parent = newItemsById[targetItem.parentId];
+          const targetIndex = parent.children.indexOf(targetId);
+          parent.children.splice(targetIndex + 1, 0, newId);
+        } else {
+          const targetIndex = newRootIds.indexOf(targetId);
+          newRootIds.splice(targetIndex + 1, 0, newId);
+        }
+      } else {
+        // 다른 레벨로 붙여넣기 불가
+        return prev;
+      }
+
+      success = true;
+      return {
+        ...prev,
+        itemsById: newItemsById,
+        rootIds: newRootIds,
+        expandedIds: newExpandedIds
+      };
+    });
+
+    return success;
+  }, [state.itemsById]);
 
   // 컬럼 추가
   const addColumn = useCallback((field, header) => {
@@ -1006,6 +1460,80 @@ export const BOMProvider = ({ children }) => {
     }));
   }, []);
 
+  // Excel 데이터 설정 (계층 구조 데이터를 받아서 평면화하여 저장)
+  const setFromExcel = useCallback((hierarchicalData) => {
+    const newItemsById = {};
+    const newRootIds = [];
+    let idCounter = 0;
+
+    // 재귀적으로 계층 구조를 평면화
+    const processItem = (item, parentId = null, level = 0) => {
+      const id = `excel-${++idCounter}`;
+
+      // children을 제외한 나머지 데이터 복사
+      const { children, ...itemData } = item;
+
+      // 새 아이템 생성
+      newItemsById[id] = {
+        id,
+        parentId,
+        children: [],
+        level,
+        data: {
+          ...itemData,
+          partNumber: itemData.partNumber || `PART-${idCounter}`,
+          partName: itemData.partName || '',
+          quantity: itemData.quantity || 1,
+          unit: itemData.unit || 'EA',
+          material: itemData.material || '',
+          weight: itemData.weight || 0,
+          supplier: itemData.supplier || '',
+          cost: itemData.cost || 0,
+          leadTime: itemData.leadTime || 0,
+          status: itemData.status || 'draft',
+          notes: itemData.notes || '',
+          icon: itemData.icon || '📦',
+          operation: itemData.operation || '',
+          workcenter: itemData.workcenter || ''
+        }
+      };
+
+      // 루트 레벨인 경우 rootIds에 추가
+      if (parentId === null) {
+        newRootIds.push(id);
+      } else {
+        // 부모의 children 배열에 추가
+        if (newItemsById[parentId]) {
+          newItemsById[parentId].children.push(id);
+        }
+      }
+
+      // 자식 아이템들 처리
+      if (children && Array.isArray(children)) {
+        children.forEach(child => {
+          processItem(child, id, level + 1);
+        });
+      }
+
+      return id;
+    };
+
+    // 모든 아이템 처리
+    hierarchicalData.forEach(item => {
+      processItem(item);
+    });
+
+    // 상태 업데이트
+    setState(prev => ({
+      ...prev,
+      itemsById: newItemsById,
+      rootIds: newRootIds,
+      expandedIds: new Set(Object.keys(newItemsById)) // 모든 아이템 펼침
+    }));
+
+    return true;
+  }, []);
+
   const value = {
     ...state,
     visibleItems,
@@ -1024,8 +1552,13 @@ export const BOMProvider = ({ children }) => {
     indent,
     outdent,
     moveAfter,
+    moveBefore,
     addColumn,
-    removeColumn
+    removeColumn,
+    setFromExcel,
+    duplicateItem,
+    copyItem,
+    pasteItem
   };
 
   return (

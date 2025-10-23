@@ -15,7 +15,8 @@ export const HeaderContextMenu = ({
   onDelete,
   onColumnManager,
   onAutoFit,
-  onResetWidth
+  onResetWidth,
+  onAddColumn
 }) => {
   const menuRef = useRef(null);
   const { theme } = useTheme();
@@ -83,6 +84,19 @@ export const HeaderContextMenu = ({
       </button>
 
       <div className="border-t border-gray-700 my-1" />
+
+      <button
+        onClick={() => {
+          if (onAddColumn) {
+            onAddColumn();
+          }
+          onClose();
+        }}
+        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${theme === 'dark' ? 'text-white hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100'}`}
+      >
+        <span>➕</span>
+        새 컬럼 추가
+      </button>
 
       <button
         onClick={() => {

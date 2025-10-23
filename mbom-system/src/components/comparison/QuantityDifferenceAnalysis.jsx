@@ -418,9 +418,9 @@ const QuantityDifferenceAnalysis = () => {
       {/* 선택된 항목 상세 정보 */}
       {selectedItem && (
         <div style={{
-          borderTop: '1px solid #3c3c3c',
+          borderTop: theme === 'dark' ? '1px solid #3c3c3c' : '1px solid #e5e7eb',
           padding: '20px',
-          background: '#252526',
+          background: theme === 'dark' ? '#252526' : '#f9fafb',
           height: '200px'
         }}>
           <h3 style={{ color: theme === 'dark' ? '#cccccc' : '#111827', marginBottom: '15px' }}>
@@ -428,7 +428,7 @@ const QuantityDifferenceAnalysis = () => {
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div>
-              <h4 style={{ color: '#969696', fontSize: '12px', marginBottom: '10px' }}>수량 정보</h4>
+              <h4 style={{ color: theme === 'dark' ? '#969696' : '#6b7280', fontSize: '12px', marginBottom: '10px' }}>수량 정보</h4>
               <div style={{ color: theme === 'dark' ? '#cccccc' : '#111827', fontSize: '13px' }}>
                 <div>EBOM: {selectedItem.ebomQuantity}개</div>
                 <div>MBOM: {selectedItem.mbomQuantity}개</div>
@@ -438,7 +438,7 @@ const QuantityDifferenceAnalysis = () => {
               </div>
             </div>
             <div>
-              <h4 style={{ color: '#969696', fontSize: '12px', marginBottom: '10px' }}>부품 정보</h4>
+              <h4 style={{ color: theme === 'dark' ? '#969696' : '#6b7280', fontSize: '12px', marginBottom: '10px' }}>부품 정보</h4>
               <div style={{ color: theme === 'dark' ? '#cccccc' : '#111827', fontSize: '13px' }}>
                 <div>레벨: {selectedItem.level}</div>
                 <div>공급업체: {selectedItem.supplier || '-'}</div>
@@ -446,7 +446,7 @@ const QuantityDifferenceAnalysis = () => {
               </div>
             </div>
             <div>
-              <h4 style={{ color: '#969696', fontSize: '12px', marginBottom: '10px' }}>영향도 분석</h4>
+              <h4 style={{ color: theme === 'dark' ? '#969696' : '#6b7280', fontSize: '12px', marginBottom: '10px' }}>영향도 분석</h4>
               <div style={{ color: theme === 'dark' ? '#cccccc' : '#111827', fontSize: '13px' }}>
                 <div>비용 영향: {(selectedItem.difference * (selectedItem.cost || 1000)).toLocaleString()}원</div>
                 <div>중요도: {selectedItem.severity === 'high' ? '높음' : selectedItem.severity === 'medium' ? '중간' : '낮음'}</div>

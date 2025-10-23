@@ -12,16 +12,51 @@ export const useBOMData = () => {
 };
 
 export const BOMDataProvider = ({ children }) => {
-  // Initialize with tree structured data directly
-  const initialTreeData = buildTreeStructure(sampleBOMData);
+  // localStorage에서 데이터 복원 시도
+  const getInitialData = () => {
+    try {
+      const savedData = localStorage.getItem('bomData');
+      if (savedData) {
+        return JSON.parse(savedData);
+      }
+    } catch (error) {
+      console.error('localStorage에서 데이터 복원 실패:', error);
+    }
+    // 복원 실패 시 샘플 데이터 사용
+    return buildTreeStructure(sampleBOMData);
+  };
 
-  const [bomData, setBomData] = useState(initialTreeData);
+  const getInitialHistory = () => {
+    try {
+      const savedHistory = localStorage.getItem('changeHistory');
+      if (savedHistory) {
+        return JSON.parse(savedHistory);
+      }
+    } catch (error) {
+      console.error('localStorage에서 변경 이력 복원 실패:', error);
+    }
+    return sampleChanges;
+  };
+
+  const getInitialColumns = () => {
+    try {
+      const savedColumns = localStorage.getItem('customColumns');
+      if (savedColumns) {
+        return JSON.parse(savedColumns);
+      }
+    } catch (error) {
+      console.error('localStorage에서 커스텀 컬럼 복원 실패:', error);
+    }
+    return [];
+  };
+
+  const [bomData, setBomData] = useState(getInitialData);
   const [selectedItem, setSelectedItem] = useState(null);
   const [modifiedItems, setModifiedItems] = useState(new Set());
-  const [changeHistory, setChangeHistory] = useState(sampleChanges);
+  const [changeHistory, setChangeHistory] = useState(getInitialHistory);
   const [loading, setLoading] = useState(false);
   const [expandedNodeIds, setExpandedNodeIds] = useState(new Set());
-  const [customColumns, setCustomColumns] = useState([]);
+  const [customColumns, setCustomColumns] = useState(getInitialColumns);
   const [gridApi, setGridApi] = useState(null);
   const [filters, setFilters] = useState({
     project: '',
@@ -30,26 +65,55 @@ export const BOMDataProvider = ({ children }) => {
     level: null
   });
 
-  // Load initial BOM data
+  // BOM 데이터 변경 시 자동 저장
   useEffect(() => {
-    // Data is already initialized, just log it
-    if (bomData.length > 0) {
-    }
-  }, []);
-
-  const loadBOMData = useCallback(() => {
-    setLoading(true);
-    
-    
-    try {
-      // Use complete BOM data from original M-BOM.html
-      const treeData = buildTreeStructure(sampleBOMData);
-      
-      if (treeData.length > 0) {
-        // Tree data loaded successfully
+    if (bomData && bomData.length > 0) {
+      try {
+        localStorage.setItem('bomData', JSON.stringify(bomData));
+        console.log('BOM 데이터가 localStorage에 저장되었습니다');
+      } catch (error) {
+        console.error('localStorage 저장 실패:', error);
       }
-      
-      setBomData(treeData);
+    }
+  }, [bomData]);
+
+  // 변경 이력 자동 저장
+  useEffect(() => {
+    try {
+      localStorage.setItem('changeHistory', JSON.stringify(changeHistory));
+      console.log('변경 이력이 localStorage에 저장되었습니다');
+    } catch (error) {
+      console.error('변경 이력 저장 실패:', error);
+    }
+  }, [changeHistory]);
+
+  // 커스텀 컬럼 자동 저장
+  useEffect(() => {
+    try {
+      localStorage.setItem('customColumns', JSON.stringify(customColumns));
+      console.log('커스텀 컬럼이 localStorage에 저장되었습니다');
+    } catch (error) {
+      console.error('커스텀 컬럼 저장 실패:', error);
+    }
+  }, [customColumns]);
+
+  const loadBOMData = useCallback((data = null) => {
+    setLoading(true);
+
+    try {
+      if (data) {
+        // 외부에서 전달받은 데이터 사용
+        setBomData(data);
+      } else {
+        // 기본 샘플 데이터 사용
+        const treeData = buildTreeStructure(sampleBOMData);
+
+        if (treeData.length > 0) {
+          console.log('Tree data loaded successfully:', treeData.length, 'items');
+        }
+
+        setBomData(treeData);
+      }
     } catch (error) {
       console.error('Error in loadBOMData:', error);
     } finally {

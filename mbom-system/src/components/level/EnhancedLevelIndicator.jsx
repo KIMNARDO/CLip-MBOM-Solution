@@ -339,7 +339,7 @@ const EnhancedLevelIndicator = ({
         </div>
       )}
 
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes pulse {
           0% {
             box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
@@ -367,7 +367,7 @@ const EnhancedLevelIndicator = ({
         .level-badge:active {
           transform: scale(0.95) !important;
         }
-      `}</style>
+      `}} />
     </div>
   );
 };
