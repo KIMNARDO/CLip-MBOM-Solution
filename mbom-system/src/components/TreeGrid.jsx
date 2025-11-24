@@ -92,16 +92,14 @@ export const TreeGrid = ({ searchTerm = '' }) => {
     });
   }, [visibleItems, searchTerm]);
 
-  // 디버깅: 레벨별 아이템 수 확인
-  useEffect(() => {
-    const levelCounts = {};
-    visibleItems.forEach(item => {
-      const level = item.level || 0;
-      levelCounts[level] = (levelCounts[level] || 0) + 1;
-    });
-    console.log('레벨별 아이템 수:', levelCounts);
-    console.log('전체 아이템:', visibleItems);
-  }, [visibleItems]);
+  // 디버깅용 코드 (프로덕션에서는 비활성화)
+  // useEffect(() => {
+  //   const levelCounts = {};
+  //   visibleItems.forEach(item => {
+  //     const level = item.level || 0;
+  //     levelCounts[level] = (levelCounts[level] || 0) + 1;
+  //   });
+  // }, [visibleItems]);
 
   // 초기 로드 시 모든 레벨 확장
   useEffect(() => {
@@ -275,13 +273,6 @@ export const TreeGrid = ({ searchTerm = '' }) => {
 
   // 행 드래그 시작
   const handleRowDragStart = useCallback((e, item) => {
-    console.log('🎯 Drag start:', {
-      id: item.id,
-      name: item.data.partName,
-      level: item.level,
-      parentId: item.parentId,
-      partNumber: item.data.partNumber
-    });
     setDraggingRow(item);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', item.id);
@@ -304,33 +295,30 @@ export const TreeGrid = ({ searchTerm = '' }) => {
     if (draggingRow && targetItem) {
       setDragOverTarget(targetItem);
 
-      // 예상 레벨 계산
+      // 레벨 차이 계산 (드래그 아이템 기준)
+      const levelDiff = draggingRow.level - targetItem.level;
       let expectedLevel = draggingRow.level;
+      let relationHint = '';
 
-      // 같은 레벨인 경우 유지
-      if (draggingRow.level === targetItem.level) {
+      // Case 1: 같은 레벨 (levelDiff === 0) → 형제로 이동
+      if (levelDiff === 0) {
         expectedLevel = draggingRow.level;
+        relationHint = '형제';
       }
-      // 아이템이 바로 위 부모 레벨로 이동하는 경우 (자식 포함 가능)
-      else if (draggingRow.level === targetItem.level + 1) {
-        // Level 2 → Level 1 부모
-        if (draggingRow.level === 2 && targetItem.level === 1) {
-          expectedLevel = 2; // Level 2 유지
-        }
-        // Level 3 → Level 2 부모
-        else if (draggingRow.level === 3 && targetItem.level === 2) {
-          expectedLevel = 3; // Level 3 유지
-        }
-        // Level 1 → Level 0 부모
-        else if (draggingRow.level === 1 && targetItem.level === 0) {
-          expectedLevel = 1; // Level 1 유지
-        }
-        else {
-          expectedLevel = null; // 이동 불가
-        }
+      // Case 2: 드래그 레벨이 타겟보다 1 높음 (levelDiff === 1) → 타겟이 부모가 됨
+      else if (levelDiff === 1) {
+        expectedLevel = draggingRow.level; // 레벨 유지, 타겟의 자식으로
+        relationHint = '자식으로';
       }
+      // Case 3: 드래그 레벨이 타겟보다 1 낮음 (levelDiff === -1) → 상위 형제로
+      else if (levelDiff === -1) {
+        expectedLevel = draggingRow.level; // 레벨 유지
+        relationHint = '상위 형제';
+      }
+      // Case 4: 레벨 차이가 2 이상 → 이동 불가
       else {
-        expectedLevel = null; // 이동 불가
+        expectedLevel = null;
+        relationHint = '이동 불가';
       }
 
       setPreviewLevel(expectedLevel);
@@ -382,22 +370,6 @@ export const TreeGrid = ({ searchTerm = '' }) => {
       e.currentTarget.style.backgroundColor = ''; // 배경색 초기화
     }
 
-    console.log('🔄 TreeGrid Version: 2.0 - Multi-level movement enabled');
-    console.log('📍 Drop target:', {
-      id: targetItem.id,
-      name: targetItem.data.partName,
-      level: targetItem.level,
-      parentId: targetItem.parentId,
-      partNumber: targetItem.data.partNumber
-    });
-    console.log('📦 Dragging item:', draggingRow ? {
-      id: draggingRow.id,
-      name: draggingRow.data.partName,
-      level: draggingRow.level,
-      parentId: draggingRow.parentId,
-      partNumber: draggingRow.data.partNumber
-    } : null);
-
     if (draggingRow && draggingRow.id !== targetItem.id) {
       // 자기 자신의 자손으로 이동하는 것은 방지 (순환 참조 방지)
       const isDescendant = (parentId, childId) => {
@@ -409,7 +381,6 @@ export const TreeGrid = ({ searchTerm = '' }) => {
       };
 
       if (isDescendant(draggingRow.id, targetItem.id)) {
-        console.log('❌ 자기 자신의 하위로는 이동할 수 없습니다');
         showWarning('자기 자신의 하위 항목으로는 이동할 수 없습니다.');
         setDraggingRow(null);
         return;
@@ -421,17 +392,12 @@ export const TreeGrid = ({ searchTerm = '' }) => {
       const height = rect.height;
       const dropPosition = y < height / 2 ? 'before' : 'after';
 
-      console.log('Drop position:', dropPosition, 'Y:', y, 'Height:', height);
-
       // BOM 설계 원칙에 따른 이동 규칙 결정
+      // 핵심: 드래그 아이템의 레벨을 기준으로 타겟과의 관계를 판단
       const draggingLevel = draggingRow.level;
       const targetLevel = targetItem.level;
       const targetParentId = targetItem.parentId;
       const hasChildren = draggingRow.children && draggingRow.children.length > 0;
-
-      // 실제 이동 위치를 정확하게 파악
-      let destinationLevel = targetLevel; // 기본적으로 타겟과 같은 레벨
-      let destinationParentId = targetParentId; // 기본적으로 타겟과 같은 부모
 
       let newLevel = draggingLevel; // 기본적으로 현재 레벨 유지
       let newParentId = null;
@@ -440,88 +406,54 @@ export const TreeGrid = ({ searchTerm = '' }) => {
       let validMove = true;
       let warningMessage = '';
 
-      // 디버깅: 실제 이동 위치 확인
-      console.log('🎯 이동 분석:', {
-        draggingItem: draggingRow.data.partNumber,
-        draggingLevel: draggingLevel,
-        targetItem: targetItem.data.partNumber,
-        targetLevel: targetLevel,
-        targetParent: targetParentId,
-        dropPosition: dropPosition
-      });
+      // 레벨 차이 계산 (드래그 아이템 기준)
+      const levelDiff = draggingLevel - targetLevel;
 
-      // 기본 이동 규칙 적용
-      // 일반 드래그는 타겟과 같은 위치(형제)로 이동
-      destinationLevel = targetLevel;
-      destinationParentId = targetParentId;
+      // === 드래그 아이템 레벨 기준 관계 판단 ===
 
-      // 같은 레벨끼리 이동 (자식 여부 무관)
-      if (draggingLevel === destinationLevel) {
-          newLevel = draggingLevel; // 레벨 유지
-          newParentId = destinationParentId; // 타겟과 같은 부모
+      // Case 1: 같은 레벨 (levelDiff === 0) → 형제로 이동
+      if (levelDiff === 0) {
+        newLevel = draggingLevel; // 레벨 유지
+        newParentId = targetParentId; // 타겟과 같은 부모
+        // moveBefore는 dropPosition에 따라 이미 설정됨
+      }
+      // Case 2: 드래그 레벨이 타겟보다 1 높음 (levelDiff === 1) → 타겟이 부모가 됨
+      else if (levelDiff === 1) {
+        // 예: Level 1 → Level 0 타겟 = Level 0이 부모가 됨
+        // 예: Level 2 → Level 1 타겟 = Level 1이 부모가 됨
+        newLevel = draggingLevel; // 레벨 유지
+        newParentId = targetItem.id; // 타겟이 새 부모
+        moveAsChild = true;
+        moveBefore = false; // 자식으로 추가할 때는 뒤에 추가
+      }
+      // Case 3: 드래그 레벨이 타겟보다 1 낮음 (levelDiff === -1) → 타겟의 형제 위치 (부모 레벨로 승격)
+      else if (levelDiff === -1) {
+        // 예: Level 0 → Level 1 타겟 = Level 1의 부모(Level 0) 형제가 됨
+        // 이 경우 드래그 아이템은 타겟의 부모와 형제가 되어야 함
+        // 하지만 BOM에서 하위 레벨 아이템을 상위로 올리는 것은 위험할 수 있음
 
-          console.log('✅ 같은 레벨 이동:', {
-            from: `Level ${draggingLevel}`,
-            to: `Level ${destinationLevel}`,
-            newParent: destinationParentId
-          });
-        }
-        // 다른 레벨로 이동 시도
-        else {
-          // Level 2 아이템이 Level 1 부모로 이동하는 경우 - 자동으로 자식이 됨 (자식 포함 가능)
-          if (draggingLevel === 2 && destinationLevel === 1) {
-            // Level 2는 Level 1의 자식이 되는 것이 자연스러운 계층 구조
-            newLevel = 2; // Level 2 유지
-            newParentId = targetItem.id; // 타겟 Level 1이 부모가 됨
-            moveAsChild = true;
-            moveBefore = false;
-
-            console.log('✅ Level 2 → Level 1 부모로 이동 (자식 포함):', {
-              item: draggingRow.data.partNumber,
-              newParent: targetItem.data.partNumber,
-              level: 'Level 2 유지',
-              withChildren: hasChildren
-            });
-          }
-          // Level 3 아이템이 Level 2 부모로 이동하는 경우 - 자동으로 자식이 됨 (자식 포함 가능)
-          else if (draggingLevel === 3 && destinationLevel === 2) {
-            // Level 3는 Level 2의 자식이 되는 것이 자연스러운 계층 구조
-            newLevel = 3; // Level 3 유지
-            newParentId = targetItem.id; // 타겟 Level 2가 부모가 됨
-            moveAsChild = true;
-            moveBefore = false;
-
-            console.log('✅ Level 3 → Level 2 부모로 이동 (자식 포함):', {
-              item: draggingRow.data.partNumber,
-              newParent: targetItem.data.partNumber,
-              level: 'Level 3 유지',
-              withChildren: hasChildren
-            });
-          }
-          // Level 1 아이템이 Level 0 부모로 이동하는 경우 - 자동으로 자식이 됨 (자식 포함 가능)
-          else if (draggingLevel === 1 && destinationLevel === 0) {
-            // Level 1은 Level 0의 자식이 되는 것이 자연스러운 계층 구조
-            newLevel = 1; // Level 1 유지
-            newParentId = targetItem.id; // 타겟 Level 0이 부모가 됨
-            moveAsChild = true;
-            moveBefore = false;
-
-            console.log('✅ Level 1 → Level 0 부모로 이동 (자식 포함):', {
-              item: draggingRow.data.partNumber,
-              newParent: targetItem.data.partNumber,
-              level: 'Level 1 유지',
-              withChildren: hasChildren
-            });
-          }
-          // 그 외의 경우는 레벨 변경 불가
-          else {
+        // 타겟의 부모를 찾아서 그 형제로 이동
+        if (targetParentId) {
+          const targetParent = itemsById[targetParentId];
+          if (targetParent && targetParent.level === draggingLevel) {
+            newLevel = draggingLevel; // 레벨 유지
+            newParentId = targetParent.parentId; // 타겟 부모의 부모가 새 부모
+          } else {
             validMove = false;
-            // 더 명확한 메시지로 변경
-            warningMessage = `Level ${draggingLevel} 아이템을 Level ${destinationLevel} 위치로 직접 이동할 수 없습니다.`;
+            warningMessage = `Level ${draggingLevel} 아이템을 Level ${targetLevel} 위치로 이동할 수 없습니다.`;
           }
+        } else {
+          validMove = false;
+          warningMessage = `Level ${draggingLevel} 아이템을 Level ${targetLevel} 위치로 이동할 수 없습니다.`;
         }
+      }
+      // Case 4: 레벨 차이가 2 이상 → 이동 불가
+      else {
+        validMove = false;
+        warningMessage = `Level ${draggingLevel} 아이템을 Level ${targetLevel} 위치로 직접 이동할 수 없습니다. (레벨 차이: ${Math.abs(levelDiff)})`;
+      }
 
-      // 부모가 자식 레벨이 될 수 없는지 검증
+      // 자식이 있는 부모가 더 낮은 레벨(자식 레벨)로 이동하는 것 방지
       if (validMove && hasChildren && newLevel > draggingLevel) {
         validMove = false;
         warningMessage = '자식이 있는 부모는 더 낮은 레벨(자식 레벨)로 이동할 수 없습니다.';
@@ -529,26 +461,11 @@ export const TreeGrid = ({ searchTerm = '' }) => {
 
       // 이동 불가능한 경우 경고 표시
       if (!validMove) {
-        console.log('❌ 이동 불가:', warningMessage);
         showWarning(warningMessage);
         setDraggingRow(null);
         setDragOverRow(null);
         return;
       }
-
-      console.log('✅ 아이템 이동:', {
-        from: draggingRow.data.partNumber,
-        to: targetItem.data.partNumber,
-        fromLevel: draggingLevel,
-        toLevel: newLevel,
-        levelChange: draggingLevel !== newLevel ? `Level ${draggingLevel} → Level ${newLevel}` : 'Level 유지',
-        fromParent: draggingRow.parentId,
-        toParent: newParentId,
-        moveAsChild: moveAsChild,
-        moveBefore: moveBefore,
-        hasChildren: hasChildren,
-        childCount: draggingRow.children ? draggingRow.children.length : 0
-      });
 
       // moveAfterTracked에 새 레벨과 새 부모 전달
       if (moveAsChild) {

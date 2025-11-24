@@ -144,10 +144,8 @@ export const GridRow = ({ item, columns, isSelected, index, searchTerm = '', onC
       onDragLeave={(e) => onDragLeave && onDragLeave(e)}
       onDrop={(e) => onDrop && onDrop(e, item)}
       onContextMenu={(e) => {
-        console.log('GridRow onContextMenu triggered for item:', item.id);
         e.preventDefault();
         setSelected(item.id);
-        console.log('Calling parent onContextMenu');
         onContextMenu(e);
       }}
     >

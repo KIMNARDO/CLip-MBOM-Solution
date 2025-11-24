@@ -1,0 +1,15 @@
+{
+  "name": "clip-mbom-solution",
+  "version": "1.0.0",
+  "description": "Manufacturing BOM Management Solution - FabsNet EPL Multi-BOM System",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev --prefix mbom-system",
+    "build": "npm run build --prefix mbom-system",
+    "preview": "npm run preview --prefix mbom-system",
+    "tailwind": "npm run tailwind --prefix mbom-system",
+    "install:all": "cd mbom-system && npm install"
+  },
+  "keywords": ["bom", "manufacturing", "mbom", "ebom"],
+  "license": "ISC"
+}

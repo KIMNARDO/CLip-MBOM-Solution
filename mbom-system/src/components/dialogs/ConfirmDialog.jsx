@@ -17,8 +17,6 @@ export const ConfirmDialog = ({
 }) => {
   const { theme } = useTheme();
 
-  console.log('ConfirmDialog rendered:', { show, title, confirmText, hasOnConfirm: !!onConfirm });
-
   if (!show) return null;
 
   const getTypeStyles = () => {
@@ -94,7 +92,6 @@ export const ConfirmDialog = ({
         <div className="px-6 py-4 flex justify-end gap-3">
           <button
             onClick={(e) => {
-              console.log('Cancel button clicked');
               e.stopPropagation();
               if (onCancel) onCancel();
             }}
@@ -109,7 +106,6 @@ export const ConfirmDialog = ({
           </button>
           <button
             onClick={(e) => {
-              console.log('Confirm button clicked', { onConfirm: !!onConfirm });
               e.stopPropagation();
               if (onConfirm) onConfirm();
             }}

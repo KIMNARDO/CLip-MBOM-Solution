@@ -15,6 +15,7 @@ import ApprovalDialog from '../dialogs/ApprovalDialog';
 import { useApproval } from '../../contexts/ApprovalContext';
 import { BOMRulesGuide } from '../testing/BOMRulesGuide';
 import { Sun, Moon, Edit, CheckCircle, FileText, Clock } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const CompleteMBOMDashboard = () => {
   const { user, logout } = useAuth();
@@ -29,7 +30,8 @@ const CompleteMBOMDashboard = () => {
     expandedIds,
     toggleExpanded,
     expandAll,
-    collapseAll
+    collapseAll,
+    setFromExcel
   } = useBOM();
 
   const {
@@ -269,17 +271,206 @@ const CompleteMBOMDashboard = () => {
   }, [changeHistory, setChangeHistory, showSuccess, showWarning]);
 
   const handleExportExcel = useCallback(() => {
-    showInfo('Excel 내보내기 준비 중...');
-    setTimeout(() => {
+    try {
+      showInfo('Excel 내보내기 준비 중...');
+
+      // BOM 데이터를 플랫한 배열로 변환
+      const flattenBOMData = (items, result = []) => {
+        if (!items) return result;
+
+        const itemArray = Array.isArray(items) ? items : Object.values(items);
+
+        itemArray.forEach(item => {
+          if (item && item.data) {
+            result.push({
+              'Level': item.level || 0,
+              '부품번호': item.data.partNumber || '',
+              '부품명': item.data.partName || '',
+              '수량': item.data.quantity || 0,
+              '단위': item.data.unit || 'EA',
+              '부품유형': item.data.partType || '',
+              '상태': item.data.status || '',
+              '공급업체': item.data.supplier || '',
+              '리드타임': item.data.leadtime || '',
+              '비용': item.data.cost || 0,
+              '설명': item.data.description || '',
+              '비고': item.data.remarks || ''
+            });
+
+            // 자식 항목이 있으면 재귀 처리
+            if (item.children && item.children.length > 0) {
+              const childItems = item.children.map(childId => itemsById[childId]).filter(Boolean);
+              flattenBOMData(childItems, result);
+            }
+          }
+        });
+
+        return result;
+      };
+
+      // 루트 아이템들 찾기
+      const rootItems = Object.values(itemsById).filter(item => !item.parentId || item.level === 0);
+      const excelData = flattenBOMData(rootItems);
+
+      if (excelData.length === 0) {
+        showWarning('내보낼 데이터가 없습니다.');
+        return;
+      }
+
+      // 워크시트 생성
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // 컬럼 너비 설정
+      ws['!cols'] = [
+        { wch: 8 },   // Level
+        { wch: 20 },  // 부품번호
+        { wch: 25 },  // 부품명
+        { wch: 10 },  // 수량
+        { wch: 8 },   // 단위
+        { wch: 12 },  // 부품유형
+        { wch: 10 },  // 상태
+        { wch: 15 },  // 공급업체
+        { wch: 10 },  // 리드타임
+        { wch: 15 },  // 비용
+        { wch: 30 },  // 설명
+        { wch: 20 }   // 비고
+      ];
+
+      // 워크북 생성
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'M-BOM');
+
+      // 파일 다운로드
       const filename = `MBOM_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
-      showSuccess(`파일이 다운로드되었습니다: ${filename}`);
-    }, 2000);
-  }, [showInfo, showSuccess]);
+      XLSX.writeFile(wb, filename);
+
+      showSuccess(`파일이 다운로드되었습니다: ${filename} (${excelData.length}개 항목)`);
+    } catch (error) {
+      showError('Excel 내보내기 실패: ' + error.message);
+    }
+  }, [itemsById, showInfo, showSuccess, showWarning, showError]);
 
 
   const handleImportData = useCallback(() => {
-    showInfo('데이터 가져오기 대화상자 열기...');
-  }, [showInfo]);
+    // 파일 선택 input 생성
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls,.csv';
+
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        showInfo(`"${file.name}" 파일 가져오는 중...`);
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+
+            // 첫 번째 시트 읽기
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+
+            // JSON으로 변환
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonData.length === 0) {
+              showWarning('가져올 데이터가 없습니다.');
+              return;
+            }
+
+            // Excel 데이터를 계층 구조로 변환
+            const convertToHierarchy = (rows) => {
+              const rootItems = [];
+              const itemMap = new Map();
+              let idCounter = 0;
+
+              // 먼저 모든 아이템 생성
+              rows.forEach((row, index) => {
+                const level = parseInt(row['Level'] || row['level'] || 0);
+                const item = {
+                  tempId: ++idCounter,
+                  level: level,
+                  partNumber: row['부품번호'] || row['partNumber'] || `IMPORT-${idCounter}`,
+                  partName: row['부품명'] || row['partName'] || '',
+                  quantity: parseFloat(row['수량'] || row['quantity'] || 1),
+                  unit: row['단위'] || row['unit'] || 'EA',
+                  partType: row['부품유형'] || row['partType'] || '',
+                  status: row['상태'] || row['status'] || 'draft',
+                  supplier: row['공급업체'] || row['supplier'] || '',
+                  leadtime: row['리드타임'] || row['leadtime'] || '',
+                  cost: parseFloat(row['비용'] || row['cost'] || 0),
+                  description: row['설명'] || row['description'] || '',
+                  remarks: row['비고'] || row['remarks'] || '',
+                  children: []
+                };
+                itemMap.set(index, item);
+              });
+
+              // 계층 구조 구성
+              let lastItemByLevel = {};
+
+              itemMap.forEach((item, index) => {
+                const level = item.level;
+
+                if (level === 0) {
+                  // 루트 아이템
+                  rootItems.push(item);
+                  lastItemByLevel = { 0: item };
+                } else {
+                  // 부모 찾기 (이전 레벨의 마지막 아이템)
+                  const parentLevel = level - 1;
+                  const parent = lastItemByLevel[parentLevel];
+
+                  if (parent) {
+                    parent.children.push(item);
+                  } else {
+                    // 부모를 찾지 못한 경우 루트로 추가
+                    rootItems.push(item);
+                  }
+                }
+
+                // 현재 레벨 업데이트
+                lastItemByLevel[level] = item;
+
+                // 현재 레벨보다 높은 레벨의 항목들 제거
+                Object.keys(lastItemByLevel).forEach(key => {
+                  if (parseInt(key) > level) {
+                    delete lastItemByLevel[key];
+                  }
+                });
+              });
+
+              return rootItems;
+            };
+
+            const hierarchicalData = convertToHierarchy(jsonData);
+
+            // BOM 데이터로 설정
+            setFromExcel(hierarchicalData);
+            setChangeHistory([]);
+
+            showSuccess(`"${file.name}"에서 ${jsonData.length}개 항목을 가져왔습니다.`);
+          } catch (parseError) {
+            showError('파일 파싱 오류: ' + parseError.message);
+          }
+        };
+
+        reader.onerror = () => {
+          showError('파일 읽기 오류');
+        };
+
+        reader.readAsArrayBuffer(file);
+      } catch (error) {
+        showError('파일 가져오기 실패: ' + error.message);
+      }
+    };
+
+    input.click();
+  }, [setFromExcel, setChangeHistory, showInfo, showSuccess, showWarning, showError]);
 
   const handleSave = useCallback(async () => {
     const result = await saveBOMData();
@@ -550,16 +741,17 @@ const CompleteMBOMDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 자동 저장
-  useEffect(() => {
-    const autoSaveInterval = setInterval(() => {
-      if (changeHistory.length > 0) {
-        showInfo('자동 저장 중...');
-      }
-    }, 60000); // 1분마다
-
-    return () => clearInterval(autoSaveInterval);
-  }, [changeHistory]);
+  // 자동 저장 - 실제 저장 로직이 구현될 때까지 알림 비활성화
+  // useEffect(() => {
+  //   const autoSaveInterval = setInterval(() => {
+  //     if (changeHistory.length > 0) {
+  //       // TODO: 실제 저장 로직 구현 후 알림 활성화
+  //       // showInfo('자동 저장 중...');
+  //     }
+  //   }, 60000); // 1분마다
+  //
+  //   return () => clearInterval(autoSaveInterval);
+  // }, [changeHistory]);
 
 
   return (
@@ -586,7 +778,7 @@ const CompleteMBOMDashboard = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           zIndex: 10000,
-          animation: 'bannerBlink 1.2s ease-in-out 0s 7'
+          animation: 'bannerBlink 1.2s ease-in-out 0s 3'
         }}>
           <div className="notification-content">
             <span className="notification-icon">🔔</span>
@@ -743,77 +935,77 @@ const CompleteMBOMDashboard = () => {
         <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'view')}>
           보기
         </div>
-        <div className="menu-item active" onClick={() => setShowChanges(!showChanges)}>
+        <div className={`menu-item ${showChanges ? 'active' : ''}`} onClick={() => setShowChanges(!showChanges)}>
           변경사항 {changeHistory.length > 0 && `(${changeHistory.length})`}
         </div>
-        <div className="menu-item" onClick={handleExportExcel}>내보내기</div>
-        <div className="menu-item" onClick={handleImportData}>가져오기</div>
+        <div className="menu-item" onClick={() => { handleExportExcel(); setActiveDropdown(null); }}>내보내기</div>
+        <div className="menu-item" onClick={() => { handleImportData(); setActiveDropdown(null); }}>가져오기</div>
         <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'tools')}>
           도구
         </div>
         <div className="menu-item dropdown" onMouseEnter={(e) => showDropdown(e, 'help')}>
           도움말
         </div>
-      </div>
 
-      {/* Dropdown Menus */}
-      {activeDropdown === 'file' && (
-        <div className="dropdown-menu" style={{ top: '56px', left: '0' }} onMouseLeave={() => setActiveDropdown(null)}>
-          <div className="menu-dropdown-item" onClick={handleNewFile}>새 파일</div>
-          <div className="menu-dropdown-item" onClick={handleOpenFile}>열기...</div>
-          <div className="menu-dropdown-item" onClick={handleSave}>저장</div>
-          <div className="menu-dropdown-item" onClick={handleExportExcel}>다른 이름으로 저장...</div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={() => { setShowExcelSync(true); setActiveDropdown(null); }}>
-            Excel 템플릿 동기화...
+        {/* Dropdown Menus - inside menubar for proper positioning */}
+        {activeDropdown === 'file' && (
+          <div className="dropdown-menu" style={{ top: '100%', left: '0' }} onMouseLeave={() => setActiveDropdown(null)}>
+            <div className="menu-dropdown-item" onClick={() => { handleNewFile(); setActiveDropdown(null); }}>새 파일</div>
+            <div className="menu-dropdown-item" onClick={() => { handleOpenFile(); setActiveDropdown(null); }}>열기...</div>
+            <div className="menu-dropdown-item" onClick={() => { handleSave(); setActiveDropdown(null); }}>저장</div>
+            <div className="menu-dropdown-item" onClick={() => { handleExportExcel(); setActiveDropdown(null); }}>다른 이름으로 저장...</div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { setShowExcelSync(true); setActiveDropdown(null); }}>
+              Excel 템플릿 동기화...
+            </div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { logout(); setActiveDropdown(null); }}>종료</div>
           </div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={logout}>종료</div>
-        </div>
-      )}
+        )}
 
-      {activeDropdown === 'edit' && (
-        <div className="dropdown-menu" style={{ top: '56px', left: '40px' }} onMouseLeave={() => setActiveDropdown(null)}>
-          <div className="menu-dropdown-item" onClick={handleUndo}>실행 취소</div>
-          <div className="menu-dropdown-item" onClick={handleRedo}>다시 실행</div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={handleCut}>잘라내기</div>
-          <div className="menu-dropdown-item" onClick={handleCopy}>복사</div>
-          <div className="menu-dropdown-item" onClick={handlePaste}>붙여넣기</div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={handleFind}>찾기</div>
-          <div className="menu-dropdown-item" onClick={handleReplace}>바꾸기</div>
-        </div>
-      )}
+        {activeDropdown === 'edit' && (
+          <div className="dropdown-menu" style={{ top: '100%', left: '40px' }} onMouseLeave={() => setActiveDropdown(null)}>
+            <div className="menu-dropdown-item" onClick={() => { handleUndo(); setActiveDropdown(null); }}>실행 취소</div>
+            <div className="menu-dropdown-item" onClick={() => { handleRedo(); setActiveDropdown(null); }}>다시 실행</div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { handleCut(); setActiveDropdown(null); }}>잘라내기</div>
+            <div className="menu-dropdown-item" onClick={() => { handleCopy(); setActiveDropdown(null); }}>복사</div>
+            <div className="menu-dropdown-item" onClick={() => { handlePaste(); setActiveDropdown(null); }}>붙여넣기</div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { handleFind(); setActiveDropdown(null); }}>찾기</div>
+            <div className="menu-dropdown-item" onClick={() => { handleReplace(); setActiveDropdown(null); }}>바꾸기</div>
+          </div>
+        )}
 
-      {activeDropdown === 'view' && (
-        <div className="dropdown-menu" style={{ top: '56px', left: '80px' }} onMouseLeave={() => setActiveDropdown(null)}>
-          <div className="menu-dropdown-item" onClick={handleToggleSidebar}>사이드바 토글</div>
-          <div className="menu-dropdown-item" onClick={() => setShowDashboard(!showDashboard)}>대시보드 토글</div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={() => expandAll()}>모두 펼치기</div>
-          <div className="menu-dropdown-item" onClick={() => collapseAll()}>모두 접기</div>
-        </div>
-      )}
+        {activeDropdown === 'view' && (
+          <div className="dropdown-menu" style={{ top: '100%', left: '80px' }} onMouseLeave={() => setActiveDropdown(null)}>
+            <div className="menu-dropdown-item" onClick={() => { handleToggleSidebar(); setActiveDropdown(null); }}>사이드바 토글</div>
+            <div className="menu-dropdown-item" onClick={() => { setShowDashboard(!showDashboard); setActiveDropdown(null); }}>대시보드 토글</div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { expandAll(); setActiveDropdown(null); }}>모두 펼치기</div>
+            <div className="menu-dropdown-item" onClick={() => { collapseAll(); setActiveDropdown(null); }}>모두 접기</div>
+          </div>
+        )}
 
-      {activeDropdown === 'tools' && (
-        <div className="dropdown-menu" style={{ top: '56px', right: '100px' }} onMouseLeave={() => setActiveDropdown(null)}>
-          <div className="menu-dropdown-item" onClick={handleSettings}>설정</div>
-          <div className="menu-dropdown-item" onClick={() => setShowAddColumnModal(true)}>컬럼 관리</div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={() => showInfo('BOM 검증 중...')}>BOM 검증</div>
-          <div className="menu-dropdown-item" onClick={() => showInfo('비용 계산 중...')}>비용 계산</div>
-        </div>
-      )}
+        {activeDropdown === 'tools' && (
+          <div className="dropdown-menu" style={{ top: '100%', left: '360px' }} onMouseLeave={() => setActiveDropdown(null)}>
+            <div className="menu-dropdown-item" onClick={() => { handleSettings(); setActiveDropdown(null); }}>설정</div>
+            <div className="menu-dropdown-item" onClick={() => { setShowAddColumnModal(true); setActiveDropdown(null); }}>컬럼 관리</div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { showInfo('BOM 검증 중...'); setActiveDropdown(null); }}>BOM 검증</div>
+            <div className="menu-dropdown-item" onClick={() => { showInfo('비용 계산 중...'); setActiveDropdown(null); }}>비용 계산</div>
+          </div>
+        )}
 
-      {activeDropdown === 'help' && (
-        <div className="dropdown-menu" style={{ top: '56px', right: '20px' }} onMouseLeave={() => setActiveDropdown(null)}>
-          <div className="menu-dropdown-item" onClick={() => window.open('https://docs.fabsnet.com', '_blank')}>온라인 도움말</div>
-          <div className="menu-dropdown-item" onClick={() => showInfo('키보드 단축키 안내')}>키보드 단축키</div>
-          <div className="dropdown-divider" />
-          <div className="menu-dropdown-item" onClick={handleAbout}>정보</div>
-        </div>
-      )}
+        {activeDropdown === 'help' && (
+          <div className="dropdown-menu" style={{ top: '100%', left: '410px' }} onMouseLeave={() => setActiveDropdown(null)}>
+            <div className="menu-dropdown-item" onClick={() => { window.open('https://docs.fabsnet.com', '_blank'); setActiveDropdown(null); }}>온라인 도움말</div>
+            <div className="menu-dropdown-item" onClick={() => { showInfo('키보드 단축키 안내'); setActiveDropdown(null); }}>키보드 단축키</div>
+            <div className="dropdown-divider" />
+            <div className="menu-dropdown-item" onClick={() => { handleAbout(); setActiveDropdown(null); }}>정보</div>
+          </div>
+        )}
+      </div>
 
 
       {/* Changes Dashboard */}

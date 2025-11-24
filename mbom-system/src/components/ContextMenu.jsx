@@ -89,12 +89,9 @@ export const ContextMenu = ({ show, position, itemId, onClose, onColumnManager, 
     }
   }, [show, onClose]);
 
-  console.log('ContextMenu render:', { show, itemId, position });
-
   if (!show) return null;
 
   const item = itemId ? itemsById[itemId] : null;
-  console.log('ContextMenu item:', item);
 
   const hasChildren = item && item.children && item.children.length > 0;
   const isLeafNode = !hasChildren;
@@ -107,9 +104,6 @@ export const ContextMenu = ({ show, position, itemId, onClose, onColumnManager, 
   };
 
   const handleDelete = () => {
-    console.log('Delete button clicked for item:', itemId);
-    console.log('Item data:', item);
-
     // 확인 대화상자 표시
     setConfirmDialog({
       show: true,
@@ -121,23 +115,19 @@ export const ContextMenu = ({ show, position, itemId, onClose, onColumnManager, 
       confirmText: '삭제',
       cancelText: '취소',
       onConfirm: () => {
-        console.log('Delete confirmed for item:', itemId);
         deleteItemTracked(itemId);
         showInfo(`"${item.data.partName}"이(가) 삭제되었습니다.`);
         setConfirmDialog(prev => ({ ...prev, show: false }));
         onClose(); // 삭제 완료 후 메뉴 닫기
       },
       onCancel: () => {
-        console.log('Delete cancelled');
         setConfirmDialog(prev => ({ ...prev, show: false }));
       }
     });
   };
 
   const handleCopy = (includeChildren = false) => {
-    console.log('Copying item:', itemId, 'includeChildren:', includeChildren);
     const result = copyItem(itemId, includeChildren);
-    console.log('Copy result:', result);
 
     if (result) {
       const message = includeChildren && hasChildren
@@ -151,9 +141,7 @@ export const ContextMenu = ({ show, position, itemId, onClose, onColumnManager, 
   };
 
   const handlePaste = (forceLevel = false) => {
-    console.log('Pasting to item:', itemId, 'forceLevel:', forceLevel);
     const result = pasteItem(itemId, forceLevel);
-    console.log('Paste result:', result);
 
     if (result) {
       const message = forceLevel
@@ -167,9 +155,7 @@ export const ContextMenu = ({ show, position, itemId, onClose, onColumnManager, 
   };
 
   const handleDuplicate = (includeChildren = false) => {
-    console.log('Duplicating item:', itemId, 'includeChildren:', includeChildren);
     const result = duplicateItemTracked(itemId, includeChildren);
-    console.log('Duplicate result:', result);
 
     if (result) {
       const successMessage = includeChildren && hasChildren
@@ -423,7 +409,6 @@ export const ContextMenu = ({ show, position, itemId, onClose, onColumnManager, 
       {itemId && (
         <button
           onClick={(e) => {
-            console.log('Delete menu button clicked!');
             e.stopPropagation();
             handleDelete();
           }}
